@@ -21,6 +21,7 @@ let activeHint: Hint | null = null;
 let timerSaveCounter = 0;
 let cloudUser: CloudUser | null = null;
 let suppressCellClick = false;
+let highlightedDigit: number | null = null;
 const cloud = new CloudSync(store, () => {
   document.querySelectorAll<HTMLElement>("[data-cloud-status]").forEach((element) => { element.textContent = cloud.status(); });
   if (["home", "library", "settings"].includes(view) && app.querySelector("main")) render();
@@ -116,7 +117,9 @@ function pickPuzzle(band: Difficulty): Puzzle {
 
 async function startPuzzle(puzzle: Puzzle) {
   const existing = Object.values(store.data.games).find((game) => game.puzzle.id === puzzle.id && !game.completedAt);
-  await store.putGame(existing || createGame(puzzle));
+  const game = existing || createGame(puzzle);
+  highlightedDigit = Number(game.values[game.anchor]) || null;
+  await store.putGame(game);
   view = "player";
   render();
 }
@@ -162,7 +165,7 @@ function cellMarkup(game: Game, cell: number, hint: Hint | null): string {
   const value = game.values[cell];
   const given = game.puzzle.givens[cell] !== "0";
   const selected = game.selected.includes(cell);
-  const anchorValue = game.values[game.anchor];
+  const anchorValue = highlightedDigit ? String(highlightedDigit) : game.values[game.anchor];
   const classes = ["sudoku-cell", given ? "given" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && anchorValue && value === anchorValue ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hint?.targets.some((target) => target.cell === cell) ? "hint-target" : "", game.colours[cell] ? `colour-${game.colours[cell]}` : ""].filter(Boolean).join(" ");
   let content = "";
   if (value) content = `<span class="cell-value">${value}</span>`;
@@ -213,7 +216,7 @@ function renderPlayer() {
         ${game.hintHistory.length ? `<button id="hint-history" class="history-button">Previous hints (${game.hintHistory.length})</button>` : ""}
         ${wrong && !store.data.preferences.showMistakes ? `<p class="quiet-warning">Something on the board conflicts with the solution. Turn on mistake checks in Settings for cell-level cues.</p>` : ""}
         <div class="mode-switch" role="group" aria-label="Entry mode">${([['normal','Digit'],['corner','Corner'],['centre','Centre'],['colour','Colour']] as [EntryMode,string][]).map(([mode,label]) => `<button data-mode="${mode}" class="${game.mode === mode ? "active" : ""}" aria-pressed="${game.mode === mode}">${label}</button>`).join("")}</div>
-        ${game.mode === "colour" ? `<div class="colour-pad" aria-label="Cell colours">${["cyan","amber","violet","green","rose","slate"].map((colour) => `<button data-colour="${colour}" class="colour-${colour}" aria-label="Apply ${colour} colour"><span></span></button>`).join("")}<button data-colour="" aria-label="Clear cell colour">×</button></div>` : `<div class="number-pad" aria-label="Number pad">${[1,2,3,4,5,6,7,8,9].map((digit) => `<button data-digit="${digit}">${digit}</button>`).join("")}<button id="clear" class="clear-key">Clear</button></div>`}
+        ${game.mode === "colour" ? `<div class="colour-pad" aria-label="Cell colours">${["cyan","amber","violet","green","rose","slate"].map((colour) => `<button data-colour="${colour}" class="colour-${colour}" aria-label="Apply ${colour} colour"><span></span></button>`).join("")}<button data-colour="" aria-label="Clear cell colour">×</button></div>` : `<div class="number-pad" aria-label="Number pad">${[1,2,3,4,5,6,7,8,9].map((digit) => `<button data-digit="${digit}" class="${highlightedDigit === digit ? "active-digit" : ""}" aria-pressed="${highlightedDigit === digit}">${digit}</button>`).join("")}<button id="clear" class="clear-key">Clear</button></div>`}
         <button id="multi" class="multi-toggle ${multiSelect ? "active" : ""}" aria-pressed="${multiSelect}"><span aria-hidden="true">▦</span> Multi-select ${multiSelect ? "on" : "off"}</button>
         <p class="control-help">Keyboard: arrows move · 1–9 enter · C corner · M centre · V colour · Shift extends selection · Ctrl/⌘ Z undo. Digits entered into multiple selected cells default to corner notes.</p>
       </aside>
@@ -226,14 +229,18 @@ function bindPlayer(game: Game) {
   app.querySelectorAll<HTMLElement>("[data-cell]").forEach((cell) => cell.addEventListener("click", async (event) => {
     if (suppressCellClick) { event.preventDefault(); return; }
     selectCell(game, Number(cell.dataset.cell), multiSelect || (event as MouseEvent).shiftKey || (event as MouseEvent).metaKey || (event as MouseEvent).ctrlKey);
+    highlightedDigit = Number(game.values[game.anchor]) || null;
     game.updatedAt = Date.now();
     await store.putGame(game);
     renderPlayer();
   }));
   app.querySelectorAll<HTMLElement>("[data-mode]").forEach((button) => button.addEventListener("click", async () => { setMode(game, button.dataset.mode as EntryMode); await store.putGame(game); renderPlayer(); }));
-  app.querySelectorAll<HTMLElement>("[data-digit]").forEach((button) => button.addEventListener("click", () => changeGame(game, () => enterDigit(game, Number(button.dataset.digit), store.data.preferences.cleanCandidates))));
+  app.querySelectorAll<HTMLElement>("[data-digit]").forEach((button) => button.addEventListener("click", () => changeGame(game, () => {
+    highlightedDigit = Number(button.dataset.digit);
+    enterDigit(game, highlightedDigit, store.data.preferences.cleanCandidates);
+  })));
   app.querySelectorAll<HTMLElement>("[data-colour]").forEach((button) => button.addEventListener("click", () => changeGame(game, () => applyColour(game, button.dataset.colour!))));
-  app.querySelector("#clear")?.addEventListener("click", () => changeGame(game, () => clearSelected(game)));
+  app.querySelector("#clear")?.addEventListener("click", () => changeGame(game, () => { highlightedDigit = null; clearSelected(game); }));
   app.querySelector("#undo")?.addEventListener("click", () => changeGame(game, () => undo(game)));
   app.querySelector("#redo")?.addEventListener("click", () => changeGame(game, () => redo(game)));
   app.querySelector("#multi")?.addEventListener("click", () => { multiSelect = !multiSelect; renderPlayer(); });
@@ -295,13 +302,13 @@ function bindCellDrag(game: Game) {
       cell.setAttribute("aria-pressed", String(selected));
     });
   };
-  const finish = async (event: PointerEvent) => {
+  const finish = (event: PointerEvent) => {
     if (event.pointerId !== activePointer) return;
     activePointer = null;
     suppressCellClick = true;
     if (board.hasPointerCapture(event.pointerId)) board.releasePointerCapture(event.pointerId);
     game.updatedAt = Date.now();
-    await store.putGame(game);
+    void store.putGame(game);
     renderPlayer();
     setTimeout(() => { suppressCellClick = false; }, 0);
   };
@@ -316,6 +323,7 @@ function bindCellDrag(game: Game) {
     visited.clear();
     visited.add(index);
     selectCell(game, index, extend);
+    highlightedDigit = Number(game.values[index]) || null;
     board.setPointerCapture(event.pointerId);
     paintSelection();
     event.preventDefault();
@@ -329,6 +337,7 @@ function bindCellDrag(game: Game) {
     visited.add(index);
     if (!game.selected.includes(index)) game.selected.push(index);
     game.anchor = index;
+    highlightedDigit = null;
     paintSelection();
     event.preventDefault();
   });
@@ -438,7 +447,7 @@ function showDialog(content: string, closeLabel = "Done") {
 }
 
 function showHelp() {
-  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Corner is for Snyder marks; Centre is for candidate lists. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Corner is for Snyder marks; Centre is for candidate lists. The last digit entered remains active on the number pad and highlights matching values until you select another cell or digit. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
 }
 
 function accountError(error: unknown) {
@@ -466,12 +475,12 @@ document.addEventListener("keydown", async (event) => {
   const mod = event.metaKey || event.ctrlKey;
   if (mod && event.key.toLowerCase() === "z") { event.preventDefault(); await changeGame(game, () => event.shiftKey ? redo(game) : undo(game)); }
   else if (mod && event.key.toLowerCase() === "y") { event.preventDefault(); await changeGame(game, () => redo(game)); }
-  else if (/^[1-9]$/.test(event.key)) { event.preventDefault(); await changeGame(game, () => enterDigit(game, Number(event.key), store.data.preferences.cleanCandidates)); }
-  else if (["Backspace", "Delete", "0"].includes(event.key)) { event.preventDefault(); await changeGame(game, () => clearSelected(game)); }
-  else if (event.key === "ArrowUp") { event.preventDefault(); moveSelection(game, -1, 0, event.shiftKey); await store.putGame(game); renderPlayer(); }
-  else if (event.key === "ArrowDown") { event.preventDefault(); moveSelection(game, 1, 0, event.shiftKey); await store.putGame(game); renderPlayer(); }
-  else if (event.key === "ArrowLeft") { event.preventDefault(); moveSelection(game, 0, -1, event.shiftKey); await store.putGame(game); renderPlayer(); }
-  else if (event.key === "ArrowRight") { event.preventDefault(); moveSelection(game, 0, 1, event.shiftKey); await store.putGame(game); renderPlayer(); }
+  else if (/^[1-9]$/.test(event.key)) { event.preventDefault(); await changeGame(game, () => { highlightedDigit = Number(event.key); enterDigit(game, highlightedDigit, store.data.preferences.cleanCandidates); }); }
+  else if (["Backspace", "Delete", "0"].includes(event.key)) { event.preventDefault(); await changeGame(game, () => { highlightedDigit = null; clearSelected(game); }); }
+  else if (event.key === "ArrowUp") { event.preventDefault(); moveSelection(game, -1, 0, event.shiftKey); highlightedDigit = Number(game.values[game.anchor]) || null; await store.putGame(game); renderPlayer(); }
+  else if (event.key === "ArrowDown") { event.preventDefault(); moveSelection(game, 1, 0, event.shiftKey); highlightedDigit = Number(game.values[game.anchor]) || null; await store.putGame(game); renderPlayer(); }
+  else if (event.key === "ArrowLeft") { event.preventDefault(); moveSelection(game, 0, -1, event.shiftKey); highlightedDigit = Number(game.values[game.anchor]) || null; await store.putGame(game); renderPlayer(); }
+  else if (event.key === "ArrowRight") { event.preventDefault(); moveSelection(game, 0, 1, event.shiftKey); highlightedDigit = Number(game.values[game.anchor]) || null; await store.putGame(game); renderPlayer(); }
   else if (event.key.toLowerCase() === "c") { setMode(game, "corner"); await store.putGame(game); renderPlayer(); }
   else if (event.key.toLowerCase() === "m") { setMode(game, "centre"); await store.putGame(game); renderPlayer(); }
   else if (event.key.toLowerCase() === "v") { setMode(game, "colour"); await store.putGame(game); renderPlayer(); }

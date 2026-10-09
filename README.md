@@ -12,9 +12,10 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
 - A compact mobile player keeps the board and full 3×3 number keypad in the initial portrait viewport at supported phone sizes.
 - Progressive hints that identify evidence and explain the technique without exposing the digit, optionally reveal the exact answer, keep dismissible per-puzzle history, and offer Apply only after that reveal. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
+- An offline technique-training path for naked and hidden singles, locked candidates, naked pairs, naked triples, and X-Wing. Each lesson moves through Learn, Find, and Deduce using a real bundled puzzle position, records independent or assisted completion, and synchronizes progress for signed-in users.
 - Automatic candidates, larger phone-note digits, bold color-preserving note matches, an explicit multi-value highlight mode, a 3×3 number keypad, completed-digit cues, candidate cleanup, optional mistake cues, completion fanfare, pause, optional timer, and light/dark/system themes.
 - IndexedDB save/resume, separate in-progress and completed sections, per-puzzle deletion, non-destructive JSON backup import, and scoped reset controls.
-- Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device progress/preferences.
+- Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device puzzle, preference, and training progress.
 - Local puzzle import with shape, conflict, solution, and uniqueness checks plus URL-only sharing.
 - Installable manifest and versioned app-shell cache. The app shell, help, solver, current progress, preferences, and full bundled catalogue relaunch offline.
 - Responsive phone, desktop, portrait, and landscape layouts with a Sudoku board that expands to use available viewport width and height, plus visible focus, semantic names, reduced-motion support, and colour-independent status cues.
@@ -48,7 +49,7 @@ npm run test:base-path
 
 `npm test` builds a relative-path production bundle and runs Chromium and WebKit, including a server-stop/reload check against the real service worker. `npm run test:base-path` separately proves that the deployable bundle uses `/strack/` for GitHub Pages assets and includes the offline shell.
 
-The unit suite covers parsing, validation, uniqueness, solving, candidates, complete hint paths, ratings metadata, entry modes, undo/redo, IndexedDB persistence, and non-destructive backup handling. Browser coverage exercises desktop and narrow/landscape layouts, notation, colours, multi-select, keyboard controls, themes, help, import/share, offline progress, catalogue access, and provenance.
+The unit suite covers parsing, validation, uniqueness, solving, candidates, complete hint and training positions, ratings metadata, entry modes, undo/redo, IndexedDB persistence, and non-destructive backup handling. Browser coverage exercises desktop and narrow/landscape layouts, training, notation, colours, multi-select, keyboard controls, themes, help, import/share, offline progress, catalogue access, and provenance.
 
 Before relying on a release on a real phone, smoke-test installation from HTTPS, airplane-mode launch, touch selection, rotation, OS theme changes, and backup restore. Desktop WebKit does not replace a physical iPhone check.
 
@@ -66,7 +67,7 @@ When `firestore.rules` changes, deploy it separately with `npx firebase deploy -
 
 ## Local data and privacy
 
-STrack always stores preferences, active boards, elapsed time, notation, colours, undo history, and completions in IndexedDB first. Signed-in users also synchronize that state into private Firestore documents. Imports merge only missing game IDs and never replace an existing game. Browser storage can be cleared or evicted; a downloaded JSON export remains the independent backup and the only backup for device-only play.
+STrack always stores preferences, training progress, active boards, elapsed time, notation, colours, undo history, and completions in IndexedDB first. Signed-in users also synchronize that state into private Firestore documents. Imports merge only missing game IDs and never replace an existing game. Browser storage can be cleared or evicted; a downloaded JSON export remains the independent backup and the only backup for device-only play.
 
 Share links contain the 81-character givens in the URL and do not upload a puzzle. Imported puzzles are solved and validated locally, labelled `Unrated`, and never assigned a fabricated SE value.
 

@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import type { AnnotationColour, AppData, BoardSnapshot, ColourLine, Game, Preferences } from "./types.ts";
+import type { AnnotationColour, AppData, BoardSnapshot, ColourLine, Game, Preferences, TrainingProgress, TrainingTechniqueId } from "./types.ts";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
@@ -19,10 +19,27 @@ export function emptyData(): AppData {
     catalogueVersion: CATALOGUE_VERSION,
     settingsUpdatedAt: 0,
     preferences: { ...DEFAULT_PREFERENCES },
+    trainingProgress: {},
     games: {},
     deletedGames: {},
     activeGameId: null,
   };
+}
+
+const trainingIds = new Set<TrainingTechniqueId>(["naked-single", "hidden-single", "locked-candidates", "naked-pair", "naked-triple", "x-wing"]);
+
+function normalizeTrainingProgress(value: unknown): TrainingProgress {
+  if (!value || typeof value !== "object") return {};
+  const result: TrainingProgress = {};
+  for (const [id, raw] of Object.entries(value)) {
+    if (!trainingIds.has(id as TrainingTechniqueId) || !raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    result[id as TrainingTechniqueId] = {
+      attempts: Math.max(0, Number(item.attempts) || 0), correct: Math.max(0, Number(item.correct) || 0), completed: Math.max(0, Number(item.completed) || 0),
+      mastered: Boolean(item.mastered), lastPracticedAt: Math.max(0, Number(item.lastPracticedAt) || 0),
+    };
+  }
+  return result;
 }
 
 const annotationColours = new Set<AnnotationColour>(["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"]);
@@ -88,6 +105,7 @@ export class Store {
         ...saved,
         settingsUpdatedAt: saved.settingsUpdatedAt || 0,
         preferences: { ...DEFAULT_PREFERENCES, ...saved.preferences },
+        trainingProgress: normalizeTrainingProgress(saved.trainingProgress),
         games: Object.fromEntries(Object.entries(saved.games || {}).map(([id, game]) => [id, normalizeGame(game as Game)])),
         deletedGames: saved.deletedGames || {},
       };
@@ -130,7 +148,7 @@ export class Store {
     return true;
   }
 
-  async mergeCloudSettings(settings: { preferences: Preferences; activeGameId: string | null; deletedGames?: Record<string, number>; updatedAt: number }) {
+  async mergeCloudSettings(settings: { preferences: Preferences; activeGameId: string | null; deletedGames?: Record<string, number>; trainingProgress?: TrainingProgress; updatedAt: number }) {
     let changed = false;
     for (const [id, deletedAt] of Object.entries(settings.deletedGames || {})) {
       if (!Number.isFinite(deletedAt) || deletedAt <= (this.data.deletedGames[id] || 0)) continue;
@@ -141,6 +159,7 @@ export class Store {
     }
     if (this.data.settingsUpdatedAt < settings.updatedAt) {
       this.data.preferences = { ...DEFAULT_PREFERENCES, ...settings.preferences };
+      if (settings.trainingProgress !== undefined) this.data.trainingProgress = normalizeTrainingProgress(settings.trainingProgress);
       this.data.activeGameId = settings.activeGameId && !this.data.deletedGames[settings.activeGameId] ? settings.activeGameId : null;
       this.data.settingsUpdatedAt = settings.updatedAt;
       changed = true;
@@ -188,6 +207,7 @@ export class Store {
       } else throw new Error(`Game ${id} is incomplete; nothing was imported.`);
     }
     this.data.preferences = { ...this.data.preferences, ...parsed.data.preferences };
+    this.data.trainingProgress = { ...this.data.trainingProgress, ...normalizeTrainingProgress(parsed.data.trainingProgress) };
     await this.saveSettings();
     return { added, skipped };
   }

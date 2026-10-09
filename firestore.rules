@@ -36,10 +36,30 @@ service cloud.firestore {
         && d.hintStage in ['none', 'preview']
         && (d.hintId == null || (d.hintId is string && d.hintId.size() <= 240));
     }
+    function validTrainingItem(value) {
+      return value is map
+        && value.keys().hasAll(['attempts', 'correct', 'completed', 'mastered', 'lastPracticedAt'])
+        && value.keys().hasOnly(['attempts', 'correct', 'completed', 'mastered', 'lastPracticedAt'])
+        && value.attempts is int && value.attempts >= 0
+        && value.correct is int && value.correct >= 0 && value.correct <= value.attempts
+        && value.completed is int && value.completed >= 0 && value.completed <= value.attempts
+        && value.mastered is bool
+        && value.lastPracticedAt is number && value.lastPracticedAt >= 0;
+    }
+    function validTrainingProgress(value) {
+      return value is map
+        && value.keys().hasOnly(['naked-single', 'hidden-single', 'locked-candidates', 'naked-pair', 'naked-triple', 'x-wing'])
+        && (!('naked-single' in value) || validTrainingItem(value['naked-single']))
+        && (!('hidden-single' in value) || validTrainingItem(value['hidden-single']))
+        && (!('locked-candidates' in value) || validTrainingItem(value['locked-candidates']))
+        && (!('naked-pair' in value) || validTrainingItem(value['naked-pair']))
+        && (!('naked-triple' in value) || validTrainingItem(value['naked-triple']))
+        && (!('x-wing' in value) || validTrainingItem(value['x-wing']));
+    }
     function validSettings() {
       let d = request.resource.data;
       return d.keys().hasAll(['version', 'preferences', 'activeGameId', 'updatedAt'])
-        && d.keys().hasOnly(['version', 'preferences', 'activeGameId', 'deletedGames', 'updatedAt'])
+        && d.keys().hasOnly(['version', 'preferences', 'activeGameId', 'deletedGames', 'trainingProgress', 'updatedAt'])
         && d.version == 1
         && d.preferences is map
         && d.preferences.keys().hasAll(['theme', 'showTimer', 'autoCandidates', 'cleanCandidates', 'highlightPeers', 'highlightMatches', 'showMistakes'])
@@ -52,6 +72,7 @@ service cloud.firestore {
         && d.preferences.highlightMatches is bool
         && d.preferences.showMistakes is bool
         && (!('deletedGames' in d) || (d.deletedGames is map && d.deletedGames.size() <= 500))
+        && (!('trainingProgress' in d) || validTrainingProgress(d.trainingProgress))
         && (d.activeGameId == null || validId(d.activeGameId))
         && d.updatedAt is number && d.updatedAt > 0;
     }

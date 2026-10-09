@@ -178,12 +178,16 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .sudoku-cell.mistake:after { content: "!"; position: absolute; right: 3px; top: 1px; color: var(--board-mistake-text); font-size: 9px; font-weight: 900; }
 .sudoku-cell.hint-evidence { background: var(--board-hint); }
 .sudoku-cell.hint-target { z-index: 3; box-shadow: inset 0 0 0 3px var(--board-hint-outline); }
-.cell-value { font-size: clamp(18px, 5vw, 32px); font-weight: 620; line-height: .95; }
+.cell-value { position: relative; z-index: 2; font-size: clamp(18px, 5vw, 32px); font-weight: 620; line-height: .95; }
 .given .cell-value { font-weight: 820; }
-.corner-marks { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); position: absolute; inset: 3px; }
+.corner-marks { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); position: absolute; z-index: 1; inset: 3px; pointer-events: none; }
 .corner-marks i { display: grid; place-items: center; color: var(--board-note); font-size: clamp(6px, 1.4vw, 11px); font-style: normal; font-weight: 750; }
 .corner-marks.auto { opacity: .58; }
-.centre-marks { position: relative; z-index: 1; padding: 1px 2px; border-radius: 3px; background: var(--board-note-bg); color: var(--board-note); font-size: clamp(8px, 1.7vw, 13px); font-weight: 750; letter-spacing: -1px; }
+.sudoku-cell.has-value.has-corner .corner-marks { inset: 3px auto auto 3px; width: 40%; height: 40%; }
+.sudoku-cell.has-value.has-corner .corner-marks i { font-size: clamp(5px, .95vw, 8px); }
+.sudoku-cell.has-value.has-corner .cell-value { position: absolute; right: 5%; bottom: 8%; font-size: clamp(18px, 4vw, 26px); }
+.centre-marks { position: relative; z-index: 3; padding: 1px 2px; border-radius: 3px; background: var(--board-note-bg); color: var(--board-note); font-size: clamp(8px, 1.7vw, 13px); font-weight: 750; letter-spacing: -1px; }
+.sudoku-cell.has-value .centre-marks { position: absolute; left: 3px; bottom: 3px; max-width: 52%; overflow: hidden; font-size: clamp(6px, 1.1vw, 9px); }
 .colour-cue { position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border: 1px solid var(--board-cue-border); border-radius: 50%; background: var(--cell-colour, transparent); }
 .sudoku-cell:not([class*="colour-"]) .colour-cue { display: none; }
 .colour-cyan { --cell-colour: #2ecbe8; }.colour-amber { --cell-colour: #f0b84d; }.colour-violet { --cell-colour: #a489e8; }.colour-green { --cell-colour: #66c995; }.colour-rose { --cell-colour: #e9879b; }.colour-slate { --cell-colour: #7e969f; }
@@ -267,7 +271,7 @@ dialog::backdrop { background: #020607b8; backdrop-filter: blur(4px); }
   .sudoku-board { border-width: 2px; border-radius: 4px; }
   .controls { gap: 8px; }.toolbar button { min-height: 48px; font-size: 18px; }
   .number-pad { grid-template-columns: repeat(5, 1fr); }.number-pad .clear-key { grid-column: 5; grid-row: 1 / span 2; }.number-pad button { min-height: 49px; }
-  .cell-value { font-size: clamp(18px, 7vw, 32px); }.corner-marks { inset: 1px; }.colour-cue { width: 6px; height: 6px; right: 2px; bottom: 2px; }
+  .cell-value { font-size: clamp(18px, 7vw, 32px); }.corner-marks { inset: 1px; }.sudoku-cell.has-value.has-corner .corner-marks { inset: 2px auto auto 2px; width: 40%; height: 40%; }.sudoku-cell.has-value .centre-marks { left: 2px; bottom: 2px; }.colour-cue { width: 6px; height: 6px; right: 2px; bottom: 2px; }
   .control-help { display: none; }.split-layout, .settings-grid { grid-template-columns: 1fr; }
   .account-card { grid-column: auto; }.account-card form { grid-template-columns: 1fr; }.account-card form .actions, .account-card form .text-button, .account-card form #account-feedback { grid-column: auto; }
   .dialog-content dl { grid-template-columns: 1fr; }.dialog-content dt:not(:first-child) { margin-top: 7px; }

@@ -22,7 +22,7 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const empty = page.locator(".sudoku-cell:not(.given)");
   await empty.nth(0).click();
-  await page.getByRole("button", { name: "Corner" }).click();
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
   await page.getByRole("button", { name: "1", exact: true }).click();
   await expect(empty.nth(0).locator(".corner-marks")).toContainText("1");
   await page.getByRole("button", { name: "Centre" }).click();
@@ -76,12 +76,41 @@ test("the last entered digit remains active and highlights matching grid values"
   await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
   expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThan(1);
 
-  await page.getByRole("button", { name: "Corner" }).click();
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
   await empty.nth(1).click();
   await page.getByRole("button", { name: digit!, exact: true }).click();
   await expect(empty.nth(1).locator(".corner-marks")).toContainText(digit!);
   await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
   expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThan(0);
+});
+
+test("corner notes remain separate from cell values and multi-cell toggles converge", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const empty = page.locator(".sudoku-cell:not(.given)");
+  await empty.nth(0).click();
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  await page.getByRole("button", { name: "Digit" }).click();
+  await page.getByRole("button", { name: "5", exact: true }).click();
+  await expect(empty.nth(0).locator(".cell-value")).toHaveText("5");
+  await expect(empty.nth(0).locator(".corner-marks")).toContainText("4");
+  await expect(empty.nth(0)).toHaveClass(/has-value/);
+  await expect(empty.nth(0)).toHaveClass(/has-corner/);
+  const valueBox = await empty.nth(0).locator(".cell-value").boundingBox();
+  const cornerBox = await empty.nth(0).locator(".corner-marks").boundingBox();
+  expect(valueBox).not.toBeNull();
+  expect(cornerBox).not.toBeNull();
+  expect(cornerBox!.x + cornerBox!.width <= valueBox!.x || cornerBox!.y + cornerBox!.height <= valueBox!.y).toBe(true);
+
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
+  await page.getByRole("button", { name: /Multi-select/ }).click();
+  await empty.nth(1).click();
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  await expect(empty.nth(0).locator(".corner-marks")).toContainText("4");
+  await expect(empty.nth(1).locator(".corner-marks")).toContainText("4");
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  await expect(empty.nth(0).locator(".corner-marks")).toHaveCount(0);
+  await expect(empty.nth(1).locator(".corner-marks")).toHaveCount(0);
 });
 
 test("hints can show answers, be dismissed, and remain available in history", async ({ page }) => {

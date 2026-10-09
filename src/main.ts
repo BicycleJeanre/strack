@@ -302,13 +302,13 @@ function bindCellDrag(game: Game) {
       cell.setAttribute("aria-pressed", String(selected));
     });
   };
-  const finish = async (event: PointerEvent) => {
+  const finish = (event: PointerEvent) => {
     if (event.pointerId !== activePointer) return;
     activePointer = null;
     suppressCellClick = true;
     if (board.hasPointerCapture(event.pointerId)) board.releasePointerCapture(event.pointerId);
     game.updatedAt = Date.now();
-    await store.putGame(game);
+    void store.putGame(game);
     renderPlayer();
     setTimeout(() => { suppressCellClick = false; }, 0);
   };

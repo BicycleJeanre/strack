@@ -123,12 +123,14 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
     const board = page.getByRole("grid", { name: "Sudoku board" });
     await expect(board).toBeVisible();
     return page.evaluate(() => {
-      const given = document.querySelector<HTMLElement>(".sudoku-cell.given")!;
+      const given = document.querySelector<HTMLElement>(".sudoku-cell.given:not(.peer):not(.match)")!;
       const empty = document.querySelector<HTMLElement>(".sudoku-cell:not(.given):not(.selected):not(.peer):not(.match)")!;
+      const peer = document.querySelector<HTMLElement>(".sudoku-cell.peer")!;
       return {
         board: getComputedStyle(document.querySelector<HTMLElement>(".sudoku-board")!).backgroundColor,
         given: getComputedStyle(given).backgroundColor,
         empty: getComputedStyle(empty).backgroundColor,
+        peer: getComputedStyle(peer).backgroundColor,
         givenText: getComputedStyle(given).color,
       };
     });
@@ -150,6 +152,10 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
   expect(dark).not.toEqual(light);
   expect(dark.empty).toBe("rgb(19, 27, 31)");
   expect(light.empty).toBe("rgb(237, 243, 244)");
+  expect(dark.given).toBe(dark.empty);
+  expect(light.given).toBe(light.empty);
+  expect(dark.peer).not.toBe(dark.empty);
+  expect(light.peer).not.toBe(light.empty);
   expect(dark.given).not.toBe(light.given);
   expect(dark.givenText).not.toBe(light.givenText);
 });

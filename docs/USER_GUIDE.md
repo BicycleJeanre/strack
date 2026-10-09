@@ -23,6 +23,8 @@ When several cells are selected, entering a digit from normal **Digit** mode def
 
 The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. Selecting another cell or entering another digit updates that highlight.
 
+Given and entered values share the normal cell background. The separate peer shade identifies the selected cell's row, column, and box without implying that filled cells have a special state.
+
 ## Keyboard shortcuts
 
 | Key | Action |

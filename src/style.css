@@ -184,6 +184,7 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .sudoku-cell.mistake { box-shadow: inset 0 0 0 3px var(--board-mistake); }
 .sudoku-cell.mistake:after { content: "!"; position: absolute; right: 3px; top: 1px; color: var(--board-mistake-text); font-size: 9px; font-weight: 900; }
 .sudoku-cell.hint-evidence { background: var(--board-hint); }
+.sudoku-cell.hint-focus { z-index: 3; box-shadow: inset 0 0 0 2px var(--board-hint-outline); }
 .sudoku-cell.hint-target { z-index: 3; box-shadow: inset 0 0 0 3px var(--board-hint-outline); }
 .cell-value { position: relative; z-index: 6; font-size: clamp(18px, 5cqw, 39px); font-weight: 620; line-height: .95; }
 .given .cell-value { font-weight: 820; }

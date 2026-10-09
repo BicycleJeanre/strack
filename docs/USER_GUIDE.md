@@ -25,7 +25,7 @@ When several cells are selected, entering a digit from normal **Digit** mode def
 
 Multi-cell notes use one selection-wide toggle: if any selected cell is missing the digit, STrack adds it to every selected cell. A second press removes it from every selected cell only once all of them contain it. Mixed selections therefore converge instead of swapping notes between cells.
 
-The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. Selecting another cell or entering another digit updates that highlight.
+The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Selecting another filled cell or entering another digit updates all of those highlights together.
 
 Once all nine instances of a digit are placed, its number-pad button turns grey. Clearing or undoing one of those values restores the button immediately; the grey state is informational and does not block note entry or corrections.
 

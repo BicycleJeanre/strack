@@ -84,6 +84,39 @@ test("the last entered digit remains active and highlights matching grid values"
   expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThan(0);
 });
 
+test("selecting a placed value highlights matching corner and centre notes", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const digit = await page.locator(".sudoku-cell.given .cell-value").first().textContent();
+  expect(digit).toMatch(/^[1-9]$/);
+  const empty = page.locator(".sudoku-cell:not(.given)");
+
+  await empty.nth(0).click();
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
+  await page.locator(`[data-digit="${digit}"]`).click();
+  await empty.nth(1).click();
+  await page.getByRole("button", { name: "Centre", exact: true }).click();
+  await page.locator(`[data-digit="${digit}"]`).click();
+
+  const matchingValue = page.locator(".sudoku-cell.given").filter({ has: page.locator(`.cell-value:text-is("${digit}")`) }).first();
+  await matchingValue.click();
+  await expect(empty.nth(0).locator(".corner-marks .note-match")).toHaveText(digit!);
+  await expect(empty.nth(1).locator(".centre-marks .note-match")).toHaveText(digit!);
+  expect(await page.locator(".note-match").count()).toBeGreaterThanOrEqual(2);
+});
+
+test("selecting a placed value highlights matching automatic candidates", async ({ page }) => {
+  await page.getByRole("button", { name: "Settings and help" }).click();
+  await page.getByLabel("Automatic candidates").check();
+  await page.getByRole("button", { name: "STrack home" }).click();
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const given = page.locator(".sudoku-cell.given").first();
+  const digit = await given.locator(".cell-value").textContent();
+  await given.click();
+  const matches = page.locator(".corner-marks.auto .note-match");
+  expect(await matches.count()).toBeGreaterThan(0);
+  await expect(matches.first()).toHaveText(digit!);
+});
+
 test("corner notes remain separate from cell values and multi-cell toggles converge", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const empty = page.locator(".sudoku-cell:not(.given)");
@@ -121,7 +154,9 @@ test("number-pad digits grey out after all nine are placed and recover on undo",
   const editable = page.locator(".sudoku-cell:not(.given)");
   for (let index = 0; index < needed; index++) {
     await editable.nth(index).click();
+    await expect(editable.nth(index)).toHaveClass(/selected/);
     await page.locator(`[data-digit="${digit}"]`).click();
+    await expect(editable.nth(index).locator(".cell-value")).toHaveText(digit);
   }
   const button = page.locator(`[data-digit="${digit}"]`);
   await expect(button).toHaveClass(/complete-digit/);

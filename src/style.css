@@ -136,9 +136,13 @@ p, li, dd { color: var(--muted); font-size: 13px; line-height: 1.65; }
 .band-mark.diabolical, .difficulty.diabolical { --band: #db7085; }
 .band-mark { background: var(--band, #4ebea3); }
 .recent-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.recent-card { min-height: 110px; padding: 15px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-soft); text-align: left; }
+.recent-card { position: relative; min-height: 110px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-soft); }
+.recent-open { width: 100%; min-height: 110px; padding: 15px 42px 15px 15px; border: 0; background: transparent; color: var(--text); text-align: left; }
 .recent-card strong, .recent-card small { display: block; margin-top: 10px; }
 .recent-card small { color: var(--faint); }
+.recent-delete { position: absolute; top: 8px; right: 8px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--panel); color: var(--danger); font-size: 17px; }
+.recent-delete:hover { border-color: var(--danger); }
+.completed-section { margin-top: 34px; }
 .difficulty, .rating { display: inline-flex; align-items: center; min-height: 22px; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; }
 .difficulty { border: 1px solid color-mix(in srgb, var(--band, #4ebea3) 60%, transparent); color: var(--band, #4ebea3); }
 .difficulty.hard { --band: #f2b85b; }.difficulty.diabolical { --band: #db7085; }.difficulty.medium { --band: #70a9ec; }.difficulty.unrated { --band: var(--muted); }
@@ -214,6 +218,7 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .colour-pad span { width: 23px; height: 23px; border-radius: 50%; background: var(--cell-colour); }
 .multi-toggle { min-height: 42px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 750; }
 .multi-toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.candidate-action { width: 100%; min-height: 42px; font-size: 11px; }
 .control-help, .quiet-warning { margin: 0; padding: 10px 12px; border-left: 2px solid var(--border-strong); font-size: 10px; line-height: 1.6; }
 .quiet-warning { border-color: #eaa94a; }
 .hint-panel { padding: 16px; border: 1px solid #b9852e; border-radius: 10px; background: #e9a93812; }

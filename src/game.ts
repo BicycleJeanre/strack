@@ -1,4 +1,4 @@
-import { applyHint as applyLogicalHint, isSolved, peers } from "./sudoku.ts";
+import { applyHint as applyLogicalHint, candidateList, isSolved, peers } from "./sudoku.ts";
 import type { BoardSnapshot, EntryMode, Game, Hint, Puzzle } from "./types.ts";
 
 const clone2d = (items: number[][]) => items.map((item) => [...item]);
@@ -71,6 +71,14 @@ export function setMode(game: Game, mode: EntryMode) {
 
 export function digitIsComplete(values: string[], digit: number) {
   return values.filter((value) => value === String(digit)).length >= 9;
+}
+
+export function fillAllCandidates(game: Game) {
+  const candidates = game.values.map((value, cell) => value || game.puzzle.givens[cell] !== "0" ? null : candidateList(game.values, cell, game.eliminated));
+  if (!candidates.some((digits, cell) => digits && digits.join("") !== game.corner[cell].join(""))) return false;
+  startChange(game);
+  for (let cell = 0; cell < 81; cell++) if (candidates[cell]) game.corner[cell] = candidates[cell]!;
+  return true;
 }
 
 export function enterDigit(game: Game, digit: number, cleanCandidates = true) {

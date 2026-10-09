@@ -31,6 +31,14 @@ test("a signed-in puzzle session continues on a second device", async ({ browser
   await expect(second.getByRole("button", { name: /Resume puzzle/ })).toBeVisible();
   await second.getByRole("button", { name: /Resume puzzle/ }).click();
   await expect(second.locator(".sudoku-cell:not(.given)").first().locator(".cell-value")).toHaveText("1");
+
+  await first.getByRole("button", { name: "STrack home" }).click();
+  await first.getByRole("button", { name: /Delete recent Easy puzzle/ }).click();
+  await first.getByRole("button", { name: "Delete puzzle", exact: true }).click();
+  await expect(first.getByRole("heading", { name: "No puzzles in progress" })).toBeVisible();
+  await second.getByRole("button", { name: /Home/ }).click();
+  await expect(second.getByRole("heading", { name: "No puzzles in progress" })).toBeVisible();
+  await expect(second.getByRole("button", { name: /Resume puzzle/ })).toHaveCount(0);
   await firstContext.close();
   await secondContext.close();
 });

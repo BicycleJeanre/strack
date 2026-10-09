@@ -97,11 +97,13 @@ export class Store {
   }
 
   async removeGame(id: string) {
+    if (!this.data.games[id]) return false;
     delete this.data.games[id];
     if (this.data.activeGameId === id) this.data.activeGameId = null;
     this.data.settingsUpdatedAt = Date.now();
     await this.save();
     this.onSettingsSaved?.();
+    return true;
   }
 
   exportJson(): string {

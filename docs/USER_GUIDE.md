@@ -10,6 +10,8 @@ Every bundled puzzle works offline after the first successful production load. T
 
 Open **Train** to follow a 20-technique curriculum from singles to expert forcing logic. It includes naked and hidden singles; locked candidates; naked pairs and triples; X-Wing, Swordfish, and Jellyfish; Skyscraper and two-string kite; XY-, XYZ-, and W-Wings; simple coloring; X-Chains, XY-Chains, and alternating inference chains; unique rectangles; ALS-XZ; and forcing chains.
 
+The **Curriculum filters** at the bottom are interactive. Choose a family such as **Wings** or **Coloring & chains** to show only those lesson cards; the page returns to the filtered lesson list automatically. Choose the active family again or select **Show all techniques** to restore the complete curriculum.
+
 The six techniques supported by the puzzle hint engine use positions extracted from the documented bundled catalogue. Advanced lessons use original, purpose-built candidate diagrams so the pattern stays legible and every relevant candidate is visible without unrelated puzzle noise. Chain diagrams draw solid strong links and dashed weak links. Both lesson types are bundled and work offline.
 
 Every available lesson uses a genuine position derived from the bundled, documented puzzle catalogue and has four stages:

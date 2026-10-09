@@ -80,7 +80,7 @@ The first release must support at least the techniques necessary for its bundled
 ## Core screens and flows
 
 - Home: resume active puzzle, choose a new puzzle by band/SE range, enter training, open a puzzle string/link, and view recent completions.
-- Training: a curriculum hub and lesson player spanning singles, intersections, subsets, fish, single-digit patterns, wings, coloring, chains, uniqueness, ALS, and forcing logic. Lessons use bundled puzzle positions where the local hint engine can derive them and focused original candidate diagrams for advanced patterns, then progress through Learn, Find, Deduce, and Complete.
+- Training: a curriculum hub with interactive family filters and a lesson player spanning singles, intersections, subsets, fish, single-digit patterns, wings, coloring, chains, uniqueness, ALS, and forcing logic. Lessons use bundled puzzle positions where the local hint engine can derive them and focused original candidate diagrams for advanced patterns, then progress through Learn, Find, Deduce, and Complete.
 - Puzzle player: grid, number pad, normal/corner/centre modes, colour palette, undo/redo, timer, hint, settings, pause, and completion state.
 - Puzzle library: filters for difficulty, completion, source, and rating; accessible compact cards; deterministic random choice.
 - Import/share: accept common 81-character formats with `0` or `.` blanks, validate shape and uniqueness, and generate a URL-safe share link without uploading the puzzle.

@@ -45,13 +45,13 @@ export const TRAINING_TECHNIQUES: TrainingTechnique[] = [
 ];
 
 export const TRAINING_ROADMAP = [
-  { title: "Singles", detail: "Naked and hidden singles", available: true },
-  { title: "Intersections & subsets", detail: "Locked candidates, pairs, triples", available: true },
-  { title: "Fish & single-digit patterns", detail: "X-Wing, Swordfish, Jellyfish, Skyscraper, two-string kite", available: true },
-  { title: "Wings", detail: "XY-Wing, XYZ-Wing, W-Wing", available: true },
-  { title: "Coloring & chains", detail: "Simple coloring, X-chains, XY-chains, AIC", available: true },
-  { title: "Expert structures", detail: "Unique rectangles, ALS-XZ, forcing chains", available: true },
-];
+  { id: "singles", title: "Singles", detail: "Naked and hidden singles", families: ["Foundations"] },
+  { id: "subsets", title: "Intersections & subsets", detail: "Locked candidates, pairs, triples", families: ["Intersections & subsets"] },
+  { id: "fish", title: "Fish & single-digit patterns", detail: "X-Wing, Swordfish, Jellyfish, Skyscraper, two-string kite", families: ["Fish", "Single-digit patterns"] },
+  { id: "wings", title: "Wings", detail: "XY-Wing, XYZ-Wing, W-Wing", families: ["Wings"] },
+  { id: "chains", title: "Coloring & chains", detail: "Simple coloring, X-chains, XY-chains, AIC", families: ["Coloring & chains"] },
+  { id: "expert", title: "Expert structures", detail: "Unique rectangles, ALS-XZ, forcing chains", families: ["Uniqueness & ALS", "Forcing"] },
+] as const;
 
 const catalogueTechniqueNames: Partial<Record<TrainingTechniqueId, string>> = {
   "naked-single": "Naked single", "hidden-single": "Hidden single", "locked-candidates": "Locked candidates",

@@ -22,6 +22,12 @@ test("training teaches a pattern before revealing its deduction and retains comp
   await page.getByRole("button", { name: "Train", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Technique lessons" })).toBeVisible();
   await expect(page.locator("[data-training]")).toHaveCount(21);
+  await page.getByRole("button", { name: /Fish & single-digit patterns/ }).click();
+  await expect(page.getByRole("heading", { name: "Fish & single-digit patterns lessons" })).toBeVisible();
+  await expect(page.locator(".lesson-card")).toHaveCount(5);
+  await expect(page.getByRole("button", { name: /Fish & single-digit patterns/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Show all techniques" }).click();
+  await expect(page.locator(".lesson-card")).toHaveCount(20);
   await page.getByRole("button", { name: /Naked single/ }).last().click();
   await expect(page.getByText("Step 1 · Learn")).toBeVisible();
   await page.getByRole("button", { name: "Practice this position" }).click();

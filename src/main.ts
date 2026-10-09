@@ -36,6 +36,8 @@ let trainingFeedback = "";
 let trainingAssisted = false;
 let trainingPatternRevealed = false;
 let trainingAnswerRevealed = false;
+type TrainingTrackId = typeof TRAINING_ROADMAP[number]["id"];
+let trainingTrack: TrainingTrackId | null = null;
 const highlightedDigits = new Set<number>();
 const annotationColours: AnnotationColour[] = ["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"];
 const cloud = new CloudSync(store, () => {
@@ -155,19 +157,28 @@ function trainingStatus(id: TrainingTechniqueId) {
   return "Not started";
 }
 
-function renderTrainingHub() {
+function renderTrainingHub(scrollToLessons = false) {
   const mastered = TRAINING_TECHNIQUES.filter((technique) => store.data.trainingProgress[technique.id]?.mastered).length;
   const completed = TRAINING_TECHNIQUES.filter((technique) => store.data.trainingProgress[technique.id]?.completed).length;
-  const recommended = TRAINING_TECHNIQUES.find((technique) => !store.data.trainingProgress[technique.id]?.mastered) || TRAINING_TECHNIQUES[0];
+  const selectedTrack = TRAINING_ROADMAP.find((track) => track.id === trainingTrack);
+  const visibleTechniques = selectedTrack ? TRAINING_TECHNIQUES.filter((technique) => (selectedTrack.families as readonly string[]).includes(technique.family)) : TRAINING_TECHNIQUES;
+  const recommended = visibleTechniques.find((technique) => !store.data.trainingProgress[technique.id]?.mastered) || visibleTechniques[0];
   shell(`
     <section class="training-hero card"><div><span class="eyebrow">Guided curriculum</span><h2>From your first single to forcing chains.</h2><p>Each lesson shows the idea, asks you to find it in an offline puzzle position or focused candidate diagram, then makes you choose the deduction yourself.</p></div><div class="training-progress" aria-label="Training progress"><strong>${mastered}/${TRAINING_TECHNIQUES.length}</strong><span>mastered · ${completed} explored</span></div></section>
     <section class="training-next card"><div><span class="eyebrow">Recommended next</span><h2>${escapeHtml(recommended.title)}</h2><p>${escapeHtml(recommended.concept)}</p></div><button class="primary compact" data-training="${recommended.id}">${store.data.trainingProgress[recommended.id]?.completed ? "Practice again" : "Begin lesson"}</button></section>
-    <section aria-labelledby="lessons-title"><div class="section-heading"><div><span class="eyebrow">Available offline</span><h2 id="lessons-title">Technique lessons</h2></div></div><div class="lesson-grid">${TRAINING_TECHNIQUES.map((technique) => {
+    <section aria-labelledby="lessons-title"><div class="section-heading"><div><span class="eyebrow" aria-live="polite">${visibleTechniques.length} of ${TRAINING_TECHNIQUES.length} available offline</span><h2 id="lessons-title">${selectedTrack ? escapeHtml(selectedTrack.title) : "Technique"} lessons</h2></div>${selectedTrack ? `<button class="text-button" id="clear-training-track">Show all techniques</button>` : ""}</div><div class="lesson-grid">${visibleTechniques.map((technique) => {
       const progress = store.data.trainingProgress[technique.id];
       return `<button class="lesson-card card ${progress?.mastered ? "mastered" : ""}" data-training="${technique.id}"><span class="lesson-level">${technique.level}</span><span><small>${escapeHtml(technique.family)}</small><strong>${escapeHtml(technique.title)}</strong><em>${trainingStatus(technique.id)}</em></span><span aria-hidden="true">→</span></button>`;
     }).join("")}</div></section>
-    <section aria-labelledby="roadmap-title"><div class="section-heading"><div><span class="eyebrow">Curriculum map</span><h2 id="roadmap-title">From first singles to forcing chains</h2></div></div><div class="roadmap-grid">${TRAINING_ROADMAP.map((track) => `<article class="roadmap-card card ${track.available ? "available" : "planned"}"><span>${track.available ? "Available" : "Planned"}</span><h3>${escapeHtml(track.title)}</h3><p>${escapeHtml(track.detail)}</p></article>`).join("")}</div></section>`, "Training");
+    <section aria-labelledby="roadmap-title"><div class="section-heading"><div><span class="eyebrow">Curriculum filters</span><h2 id="roadmap-title">Choose a technique family</h2></div>${selectedTrack ? `<button class="text-button" data-clear-training-track>Show all</button>` : ""}</div><div class="roadmap-grid">${TRAINING_ROADMAP.map((track) => `<button class="roadmap-card card ${trainingTrack === track.id ? "active" : ""}" data-training-track="${track.id}" aria-pressed="${trainingTrack === track.id}"><span>${trainingTrack === track.id ? "Showing" : "Filter lessons"}</span><h3>${escapeHtml(track.title)}</h3><p>${escapeHtml(track.detail)}</p></button>`).join("")}</div></section>`, "Training");
   app.querySelectorAll<HTMLElement>("[data-training]").forEach((button) => button.addEventListener("click", () => openTraining(button.dataset.training as TrainingTechniqueId)));
+  app.querySelectorAll<HTMLElement>("[data-training-track]").forEach((button) => button.addEventListener("click", () => {
+    const next = button.dataset.trainingTrack as TrainingTrackId;
+    trainingTrack = trainingTrack === next ? null : next;
+    renderTrainingHub(true);
+  }));
+  app.querySelectorAll<HTMLElement>("#clear-training-track, [data-clear-training-track]").forEach((button) => button.addEventListener("click", () => { trainingTrack = null; renderTrainingHub(true); }));
+  if (scrollToLessons) requestAnimationFrame(() => document.querySelector("#lessons-title")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
 }
 
 function openTraining(id: TrainingTechniqueId) {

@@ -9,7 +9,7 @@ const puzzle = {
   id: "test-puzzle", givens: "0".repeat(81), solution: "123456789".repeat(9), source: "Imported", sourceUrl: "", provenance: "test", licence: "test", seRating: null, ratingEngine: "Not rated", ratingVersion: "Not rated", difficulty: "Unrated", catalogueVersion: "test", fullHints: false,
 };
 const game = {
-  version: 1, id: "game-1", puzzle, values: Array(81).fill(""), corner: Array(81).fill(""), centre: Array(81).fill(""), colours: Array(81).fill(""), eliminated: Array(81).fill(""), selected: [0], anchor: 0, mode: "normal", history: [], future: [], elapsed: 0, startedAt: 1, updatedAt: 1, completedAt: null, paused: false, hintStage: "none", hintId: null,
+  version: 1, id: "game-1", puzzle, values: Array(81).fill(""), corner: Array(81).fill(""), centre: Array(81).fill(""), colours: Array(81).fill(""), eliminated: Array(81).fill(""), selected: [0], anchor: 0, mode: "normal", history: [], future: [], hintHistory: [], elapsed: 0, startedAt: 1, updatedAt: 1, completedAt: null, paused: false, hintStage: "none", hintId: null,
 };
 
 before(async () => {
@@ -24,6 +24,8 @@ test("owners can store and read valid games while other users cannot", async () 
   const owner = environment.authenticatedContext("owner").firestore();
   const other = environment.authenticatedContext("other").firestore();
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/game-1"), game));
+  const { hintHistory: _hintHistory, ...legacyGame } = game;
+  await assertSucceeds(setDoc(doc(owner, "users/owner/games/legacy"), { ...legacyGame, id: "legacy" }));
   await assertSucceeds(getDoc(doc(owner, "users/owner/games/game-1")));
   await assertFails(getDoc(doc(other, "users/owner/games/game-1")));
 });

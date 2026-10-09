@@ -41,6 +41,7 @@ export interface Game extends BoardSnapshot {
   paused: boolean;
   hintStage: "none" | "preview";
   hintId: string | null;
+  hintHistory: HintRecord[];
 }
 
 export interface Preferences {
@@ -70,4 +71,11 @@ export interface Hint {
   kind: "place" | "eliminate";
   evidence: number[];
   targets: Array<{ cell: number; digit: number }>;
+}
+
+export interface HintRecord extends Hint {
+  viewedAt: number;
+  answerShown: boolean;
+  applied: boolean;
+  dismissed: boolean;
 }

@@ -42,13 +42,13 @@ test("separate notation modes, multi-cell entry, candidate cleanup, undo and red
   assert.deepEqual(game.centre[2], [1]);
   selectCell(game, 3, true);
   setMode(game, "normal");
-  enterDigit(game, 4);
-  assert.equal(game.values[2], "4");
-  assert.equal(game.values[3], "4");
+  enterDigit(game, 5);
+  assert.deepEqual(game.corner[2], [4, 5]);
+  assert.deepEqual(game.corner[3], [5]);
   assert.equal(undo(game), true);
-  assert.equal(game.values[2], "");
+  assert.deepEqual(game.corner[2], [4]);
   assert.equal(redo(game), true);
-  assert.equal(game.values[2], "4");
+  assert.deepEqual(game.corner[2], [4, 5]);
 });
 
 test("catalogue has 20 valid, rated, provenance-complete puzzles in every band", async () => {

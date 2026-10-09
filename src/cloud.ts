@@ -70,10 +70,11 @@ type CloudSnapshot = Omit<BoardSnapshot, "corner" | "centre" | "eliminated"> & {
   eliminated: string[];
 };
 
-type CloudGame = Omit<Game, "corner" | "centre" | "eliminated" | "history" | "future"> & CloudSnapshot & {
+type CloudGame = Omit<Game, "corner" | "centre" | "eliminated" | "history" | "future" | "hintHistory"> & CloudSnapshot & {
   version: 1;
   history: string[];
   future: string[];
+  hintHistory: string[];
 };
 
 const encodeMarks = (marks: number[][]) => marks.map((digits) => [...digits].sort().join(""));
@@ -102,6 +103,7 @@ export function encodeCloudGame(game: Game): CloudGame {
     eliminated: encodeMarks(game.eliminated),
     history: game.history.slice(-80).map((snapshot) => JSON.stringify(encodeSnapshot(snapshot))),
     future: game.future.slice(-80).map((snapshot) => JSON.stringify(encodeSnapshot(snapshot))),
+    hintHistory: game.hintHistory.slice(-40).map((hint) => JSON.stringify(hint)),
   };
 }
 
@@ -110,9 +112,12 @@ export function decodeCloudGame(value: unknown): Game | null {
   if (!game || game.version !== 1 || typeof game.id !== "string" || game.puzzle?.givens?.length !== 81 || game.values?.length !== 81 || game.corner?.length !== 81 || game.centre?.length !== 81 || game.eliminated?.length !== 81 || typeof game.updatedAt !== "number") return null;
   const history = game.history.map(decodeSnapshot);
   const future = game.future.map(decodeSnapshot);
-  if (history.some((item) => !item) || future.some((item) => !item)) return null;
+  let hintHistory: Game["hintHistory"] = [];
+  try { hintHistory = (game.hintHistory || []).map((hint) => JSON.parse(hint)); }
+  catch { return null; }
+  if (history.some((item) => !item) || future.some((item) => !item) || hintHistory.length > 40) return null;
   const { version: _version, ...rest } = game;
-  return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), eliminated: decodeMarks(game.eliminated), history: history as BoardSnapshot[], future: future as BoardSnapshot[] };
+  return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), eliminated: decodeMarks(game.eliminated), history: history as BoardSnapshot[], future: future as BoardSnapshot[], hintHistory };
 }
 
 function validSettings(value: unknown): value is { preferences: Preferences; activeGameId: string | null; updatedAt: number } {

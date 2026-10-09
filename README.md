@@ -11,7 +11,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 - Normal digits with retained notes, visually separate corner/Snyder and centre/candidate marks, six cell colours, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
 - Progressive hints that identify evidence, name and explain the technique, optionally show the exact answer, keep dismissible per-puzzle history, and wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
-- Automatic candidates, peer and matching-digit highlights, candidate cleanup, optional mistake cues, pause, optional timer, and light/dark/system themes.
+- Automatic candidates, peer and matching-digit highlights, completed-digit number-pad cues, candidate cleanup, optional mistake cues, pause, optional timer, and light/dark/system themes.
 - IndexedDB save/resume, recent completions, non-destructive JSON backup import, and scoped reset controls.
 - Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device progress/preferences.
 - Local puzzle import with shape, conflict, solution, and uniqueness checks plus URL-only sharing.

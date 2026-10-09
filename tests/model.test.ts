@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { createGame, enterDigit, redo, selectCell, setMode, undo } from "../src/game.ts";
+import { createGame, digitIsComplete, enterDigit, redo, selectCell, setMode, undo } from "../src/game.ts";
 import { applyHint as applyLogicalHint, candidateList, findHint, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
 
@@ -71,6 +71,16 @@ test("notes coexist with cell values and multi-cell toggles converge before remo
   enterDigit(game, 4);
   assert.deepEqual(game.corner[2], [6]);
   assert.deepEqual(game.corner[3], [], "only a uniform selection removes the note from every cell");
+});
+
+test("a digit is complete once all nine instances are placed", () => {
+  const values = Array(81).fill("");
+  values.splice(0, 8, ...Array(8).fill("5"));
+  assert.equal(digitIsComplete(values, 5), false);
+  values[8] = "5";
+  assert.equal(digitIsComplete(values, 5), true);
+  values[0] = "";
+  assert.equal(digitIsComplete(values, 5), false);
 });
 
 test("catalogue has 20 valid, rated, provenance-complete puzzles in every band", async () => {

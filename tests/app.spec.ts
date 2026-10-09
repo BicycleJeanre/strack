@@ -113,6 +113,26 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
   await expect(empty.nth(1).locator(".corner-marks")).toHaveCount(0);
 });
 
+test("number-pad digits grey out after all nine are placed and recover on undo", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const digit = "5";
+  const placed = await page.locator(".sudoku-cell .cell-value").allTextContents();
+  const needed = 9 - placed.filter((value) => value === digit).length;
+  const editable = page.locator(".sudoku-cell:not(.given)");
+  for (let index = 0; index < needed; index++) {
+    await editable.nth(index).click();
+    await page.locator(`[data-digit="${digit}"]`).click();
+  }
+  const button = page.locator(`[data-digit="${digit}"]`);
+  await expect(button).toHaveClass(/complete-digit/);
+  await expect(button).toHaveAttribute("aria-label", "5, all placed");
+  expect(Number(await button.evaluate((element) => getComputedStyle(element).opacity))).toBeLessThan(1);
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(button).not.toHaveClass(/complete-digit/);
+  await expect(button).toHaveAttribute("aria-label", "5");
+});
+
 test("hints can show answers, be dismissed, and remain available in history", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   await page.getByRole("button", { name: "Get a logical hint" }).click();

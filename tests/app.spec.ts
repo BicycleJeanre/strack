@@ -56,15 +56,21 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
   expect(await page.locator(".sudoku-cell.selected").count()).toBeGreaterThan(1);
 });
 
-test("all candidates are calculated into corner notes as one undoable action", async ({ page }) => {
+test("all candidates replace corner notes with centre notes as one undoable action", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const empty = page.locator(".sudoku-cell:not(.given):not(.has-value)");
   const emptyCount = await empty.count();
+  await empty.first().click();
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await expect(empty.first().locator(".corner-marks")).toContainText("1");
   await page.getByRole("button", { name: "Calculate all candidates" }).click();
-  await expect(page.locator(".sudoku-cell:not(.given):not(.has-value) .corner-marks")).toHaveCount(emptyCount);
+  await expect(page.locator(".sudoku-cell:not(.given) .corner-marks")).toHaveCount(0);
+  await expect(page.locator(".sudoku-cell:not(.given):not(.has-value) .centre-marks")).toHaveCount(emptyCount);
   await expect(page.getByText("Candidates calculated for every empty cell")).toBeVisible();
   await page.getByRole("button", { name: "Undo" }).click();
-  await expect(page.locator(".sudoku-cell:not(.given) .corner-marks")).toHaveCount(0);
+  await expect(empty.first().locator(".corner-marks")).toContainText("1");
+  await expect(page.locator(".sudoku-cell:not(.given) .centre-marks")).toHaveCount(0);
 });
 
 test("peer shading appears only when the selected cell contains a value", async ({ page }) => {
@@ -181,7 +187,7 @@ test("selecting a placed value highlights matching automatic candidates", async 
   const given = page.locator(".sudoku-cell.given").first();
   const digit = await given.locator(".cell-value").textContent();
   await given.click();
-  const matches = page.locator(".corner-marks.auto .note-match");
+  const matches = page.locator(".centre-marks.auto .note-match");
   expect(await matches.count()).toBeGreaterThan(0);
   await expect(matches.first()).toHaveText(digit!);
 });
@@ -192,17 +198,31 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
   await empty.nth(0).click();
   await page.getByRole("button", { name: "Corner", exact: true }).click();
   await page.getByRole("button", { name: "4", exact: true }).click();
+  await page.getByRole("button", { name: "Centre", exact: true }).click();
+  await page.getByRole("button", { name: "6", exact: true }).click();
+  const cell = page.locator(".sudoku-cell.selected").first();
+  const corner = cell.locator(".corner-marks");
+  const centre = cell.locator(".centre-marks");
+  await expect(corner.locator("i")).toHaveText("4");
+  await expect(centre.locator("i")).toHaveText("6");
+  const cornerLayout = await corner.evaluate((element) => ({ position: getComputedStyle(element).position, justify: getComputedStyle(element).justifyContent, wrap: getComputedStyle(element).flexWrap }));
+  const centreLayout = await centre.evaluate((element) => ({ position: getComputedStyle(element).position, justify: getComputedStyle(element).justifyContent, transform: getComputedStyle(element).transform, wrap: getComputedStyle(element).flexWrap }));
+  const cornerColour = await corner.locator("i").evaluate((element) => getComputedStyle(element).color);
+  const centreColour = await centre.locator("i").evaluate((element) => getComputedStyle(element).color);
+  expect(cornerLayout).toEqual({ position: "absolute", justify: "flex-start", wrap: "wrap" });
+  expect(centreLayout.position).toBe("absolute");
+  expect(centreLayout.justify).toBe("center");
+  expect(centreLayout.transform).not.toBe("none");
+  expect(centreLayout.wrap).toBe("wrap");
+  expect(cornerColour).not.toBe(centreColour);
   await page.getByRole("button", { name: "Digit" }).click();
   await page.getByRole("button", { name: "5", exact: true }).click();
   await expect(empty.nth(0).locator(".cell-value")).toHaveText("5");
   await expect(empty.nth(0).locator(".corner-marks")).toContainText("4");
+  await expect(empty.nth(0).locator(".centre-marks")).toHaveCount(0);
   await expect(empty.nth(0)).toHaveClass(/has-value/);
   await expect(empty.nth(0)).toHaveClass(/has-corner/);
-  const valueBox = await empty.nth(0).locator(".cell-value").boundingBox();
-  const cornerBox = await empty.nth(0).locator(".corner-marks").boundingBox();
-  expect(valueBox).not.toBeNull();
-  expect(cornerBox).not.toBeNull();
-  expect(cornerBox!.x + cornerBox!.width <= valueBox!.x || cornerBox!.y + cornerBox!.height <= valueBox!.y).toBe(true);
+  expect(await cell.locator(".cell-value").evaluate((element) => getComputedStyle(element).position)).toBe("relative");
 
   await page.getByRole("button", { name: "Corner", exact: true }).click();
   await page.getByRole("button", { name: /Multi-select/ }).click();
@@ -215,8 +235,24 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
   await expect(empty.nth(1).locator(".corner-marks")).toHaveCount(0);
 });
 
+test("clicking outside the grid deselects cells and enables multi-digit highlighting", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  await expect(page.locator(".sudoku-cell.selected")).toHaveCount(1);
+  await page.locator(".board-status").click();
+  await expect(page.locator(".sudoku-cell.selected")).toHaveCount(0);
+  await expect(page.getByText("No cells selected · tap any digits to highlight them together.")).toBeVisible();
+
+  const values = await page.locator(".sudoku-cell.given .cell-value").allTextContents();
+  const digits = [...new Set(values)].slice(0, 2);
+  expect(digits).toHaveLength(2);
+  for (const digit of digits) await page.locator(`[data-digit="${digit}"]`).click();
+  for (const digit of digits) await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
+  expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThanOrEqual(2);
+});
+
 test("number-pad digits grey out after all nine are placed and recover on undo", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  await expect(page.getByRole("grid", { name: "Sudoku board" })).toBeVisible();
   const digit = "5";
   const placed = await page.locator(".sudoku-cell .cell-value").allTextContents();
   const needed = 9 - placed.filter((value) => value === digit).length;
@@ -263,7 +299,8 @@ test("settings persist theme and help explains notation, ratings, offline use an
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("button", { name: "Open user guide" }).click();
   const guide = page.getByRole("dialog");
-  await expect(guide).toContainText("Corner is for Snyder marks");
+  await expect(guide).toContainText("Warm corner notes stay in the top-left");
+  await expect(guide).toContainText("Cool centre notes stay centred");
   await expect(guide).toContainText("not an official universal scale");
   await expect(guide).toContainText("IndexedDB");
   await guide.getByRole("button", { name: "Got it" }).click();

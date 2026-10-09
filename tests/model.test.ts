@@ -83,14 +83,28 @@ test("a digit is complete once all nine instances are placed", () => {
   assert.equal(digitIsComplete(values, 5), false);
 });
 
-test("all candidates can be calculated into corner notes and undone", () => {
+test("all candidates replace corner notes with centre notes and are undone together", () => {
   const game = createGame(fixture, 1);
+  game.corner[2] = [4];
   assert.equal(fillAllCandidates(game), true);
-  assert.deepEqual(game.corner[2], candidateList(game.values, 2));
-  assert.deepEqual(game.corner[3], candidateList(game.values, 3));
+  assert.deepEqual(game.corner[2], []);
+  assert.deepEqual(game.centre[2], candidateList(game.values, 2));
+  assert.deepEqual(game.centre[3], candidateList(game.values, 3));
   assert.equal(game.history.length, 1);
   assert.equal(undo(game), true);
-  assert.deepEqual(game.corner[2], []);
+  assert.deepEqual(game.corner[2], [4]);
+  assert.deepEqual(game.centre[2], []);
+});
+
+test("entering a value clears centre notes but retains corner notes", () => {
+  const game = createGame(fixture, 1);
+  selectCell(game, 2);
+  game.corner[2] = [4];
+  game.centre[2] = [1, 2, 4];
+  enterDigit(game, 5);
+  assert.equal(game.values[2], "5");
+  assert.deepEqual(game.corner[2], [4]);
+  assert.deepEqual(game.centre[2], []);
 });
 
 test("catalogue has 20 valid, rated, provenance-complete puzzles in every band", async () => {

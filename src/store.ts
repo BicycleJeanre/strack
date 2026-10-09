@@ -27,6 +27,7 @@ export function emptyData(): AppData {
 
 function normalizeGame(game: Game): Game {
   game.hintHistory = Array.isArray(game.hintHistory) ? game.hintHistory : [];
+  for (let cell = 0; cell < game.values.length; cell++) if (game.values[cell]) game.centre[cell] = [];
   return game;
 }
 

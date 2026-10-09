@@ -10,6 +10,11 @@ test.beforeEach(async ({ page }) => {
 test("home, library and puzzle details expose the offline catalogue and SE provenance", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Good/ })).toBeVisible();
   await expect(page.getByText("See all 80")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Daily challenges" })).toBeVisible();
+  await expect(page.locator("[data-challenge-puzzle]")).toHaveCount(4);
+  await page.getByRole("button", { name: "This week" }).click();
+  await expect(page.getByRole("heading", { name: "Weekly challenges" })).toBeVisible();
+  await expect(page.locator("[data-challenge-puzzle]")).toHaveCount(4);
   await page.getByRole("button", { name: "Puzzles" }).click();
   await expect(page.getByText("80 puzzles")).toBeVisible();
   await page.getByRole("button", { name: "Puzzle details" }).first().click();

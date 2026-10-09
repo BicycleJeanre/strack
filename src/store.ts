@@ -20,6 +20,7 @@ export function emptyData(): AppData {
     settingsUpdatedAt: 0,
     preferences: { ...DEFAULT_PREFERENCES },
     games: {},
+    deletedGames: {},
     activeGameId: null,
   };
 }
@@ -49,6 +50,7 @@ export class Store {
         settingsUpdatedAt: saved.settingsUpdatedAt || 0,
         preferences: { ...DEFAULT_PREFERENCES, ...saved.preferences },
         games: Object.fromEntries(Object.entries(saved.games || {}).map(([id, game]) => [id, normalizeGame(game as Game)])),
+        deletedGames: saved.deletedGames || {},
       };
     }
   }
@@ -62,6 +64,7 @@ export class Store {
   }
 
   async putGame(game: Game, active = true) {
+    delete this.data.deletedGames[game.id];
     this.data.games[game.id] = game;
     if (active && this.data.activeGameId !== game.id) {
       this.data.activeGameId = game.id;
@@ -80,6 +83,7 @@ export class Store {
 
   async mergeCloudGame(game: Game) {
     normalizeGame(game);
+    if (this.data.deletedGames[game.id]) return false;
     const local = this.data.games[game.id];
     if (local && local.updatedAt >= game.updatedAt) return false;
     this.data.games[game.id] = game;
@@ -87,20 +91,35 @@ export class Store {
     return true;
   }
 
-  async mergeCloudSettings(settings: { preferences: Preferences; activeGameId: string | null; updatedAt: number }) {
-    if (this.data.settingsUpdatedAt >= settings.updatedAt) return false;
-    this.data.preferences = { ...DEFAULT_PREFERENCES, ...settings.preferences };
-    this.data.activeGameId = settings.activeGameId;
-    this.data.settingsUpdatedAt = settings.updatedAt;
+  async mergeCloudSettings(settings: { preferences: Preferences; activeGameId: string | null; deletedGames?: Record<string, number>; updatedAt: number }) {
+    let changed = false;
+    for (const [id, deletedAt] of Object.entries(settings.deletedGames || {})) {
+      if (!Number.isFinite(deletedAt) || deletedAt <= (this.data.deletedGames[id] || 0)) continue;
+      this.data.deletedGames[id] = deletedAt;
+      if (this.data.games[id]) delete this.data.games[id];
+      if (this.data.activeGameId === id) this.data.activeGameId = null;
+      changed = true;
+    }
+    if (this.data.settingsUpdatedAt < settings.updatedAt) {
+      this.data.preferences = { ...DEFAULT_PREFERENCES, ...settings.preferences };
+      this.data.activeGameId = settings.activeGameId && !this.data.deletedGames[settings.activeGameId] ? settings.activeGameId : null;
+      this.data.settingsUpdatedAt = settings.updatedAt;
+      changed = true;
+    }
+    if (!changed) return false;
     await this.save();
     return true;
   }
 
-  async removeGame(id: string) {
-    if (!this.data.games[id]) return false;
+  async removeGame(id: string, deletedAt = Date.now()) {
+    const changed = Boolean(this.data.games[id]) || deletedAt > (this.data.deletedGames[id] || 0);
+    if (!changed) return false;
     delete this.data.games[id];
+    this.data.deletedGames[id] = Math.max(deletedAt, this.data.deletedGames[id] || 0);
+    const deletions = Object.entries(this.data.deletedGames).sort((a, b) => b[1] - a[1]).slice(0, 500);
+    this.data.deletedGames = Object.fromEntries(deletions);
     if (this.data.activeGameId === id) this.data.activeGameId = null;
-    this.data.settingsUpdatedAt = Date.now();
+    this.data.settingsUpdatedAt = Math.max(Date.now(), deletedAt);
     await this.save();
     this.onSettingsSaved?.();
     return true;
@@ -124,6 +143,7 @@ export class Store {
     for (const [id, game] of Object.entries(parsed.data.games as Record<string, Game>)) {
       if (this.data.games[id]) skipped++;
       else if (game?.puzzle?.givens?.length === 81 && game.values?.length === 81) {
+        delete this.data.deletedGames[id];
         this.data.games[id] = normalizeGame(game);
         added++;
       } else throw new Error(`Game ${id} is incomplete; nothing was imported.`);

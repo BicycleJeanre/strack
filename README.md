@@ -59,6 +59,8 @@ Before relying on a release on a real phone, smoke-test installation from HTTPS,
 
 The deployment requires the four public Firebase web identifiers as Actions secrets: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Firestore Rules keep every `users/{uid}` game and settings document private to that authenticated user. `npm run test:rules` validates isolation, and `npm run test:cloud` proves a puzzle started in one browser context resumes in another through the local Auth/Firestore emulators.
 
+When `firestore.rules` changes, deploy it separately with `npx firebase deploy --only firestore:rules --project strack-bicycle` before publishing the matching Pages release. The Pages workflow does not authenticate to Firebase or deploy backend rules.
+
 ## Local data and privacy
 
 STrack always stores preferences, active boards, elapsed time, notation, colours, undo history, and completions in IndexedDB first. Signed-in users also synchronize that state into private Firestore documents. Imports merge only missing game IDs and never replace an existing game. Browser storage can be cleared or evicted; a downloaded JSON export remains the independent backup and the only backup for device-only play.

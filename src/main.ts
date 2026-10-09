@@ -11,7 +11,9 @@ const store = new Store();
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const dialog = document.querySelector<HTMLDialogElement>("#dialog")!;
 const toast = document.querySelector<HTMLDivElement>("#toast")!;
-let view: "home" | "library" | "player" | "import" | "settings" = "home";
+type View = "home" | "library" | "player" | "import" | "settings";
+let view: View = "home";
+let viewBeforeSettings: Exclude<View, "settings"> = "home";
 let libraryBand: Difficulty | "All" = "All";
 let libraryCompletion: "all" | "new" | "started" | "complete" = "all";
 let minRating = "";
@@ -48,7 +50,7 @@ function shell(content: string, title: string) {
       <span class="cloud-state" data-cloud-status>${cloud.status()}</span><nav aria-label="Main navigation">
         <button data-nav="library" class="${view === "library" ? "active" : ""}">Puzzles</button>
         <button data-nav="import" class="${view === "import" ? "active" : ""}">Open</button>
-        <button data-nav="settings" class="${view === "settings" ? "active" : ""}" aria-label="Settings and help">•••</button>
+        <button data-nav="settings" class="${view === "settings" ? "active" : ""}" aria-label="${view === "settings" ? "Close settings and help" : "Settings and help"}" aria-pressed="${view === "settings"}">•••</button>
       </nav>
     </header>
     <main id="main" tabindex="-1">
@@ -59,10 +61,14 @@ function shell(content: string, title: string) {
 }
 
 function bindNavigation() {
-  app.querySelectorAll<HTMLElement>("[data-nav]").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.nav as typeof view)));
+  app.querySelectorAll<HTMLElement>("[data-nav]").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.nav as View)));
 }
 
-function navigate(next: typeof view) {
+function navigate(next: View) {
+  if (next === "settings") {
+    if (view === "settings") next = viewBeforeSettings;
+    else viewBeforeSettings = view;
+  }
   view = next;
   activeHint = null;
   history.replaceState(null, "", location.pathname + (next === "import" && new URLSearchParams(location.search).has("p") ? location.search : ""));
@@ -121,9 +127,9 @@ function confirmDeleteGame(id: string) {
   showDialog(`<h2>Delete puzzle?</h2><p>Remove this ${escapeHtml(game.puzzle.difficulty)} puzzle and its saved values, notes, colours, and history${cloudUser ? " from your synced devices" : " from this device"}?</p><button class="danger" id="confirm-delete-game">Delete puzzle</button>`, "Keep puzzle");
   dialog.querySelector("#confirm-delete-game")!.addEventListener("click", async () => {
     await store.removeGame(id);
-    await cloud.deleteGame(id);
+    const synced = await cloud.deleteGame(id);
     dialog.close();
-    notify("Puzzle deleted");
+    notify(synced ? "Puzzle deleted" : "Deleted here; cloud deletion will retry");
     renderHome();
   });
 }

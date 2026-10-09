@@ -80,7 +80,7 @@ The first release must support at least the techniques necessary for its bundled
 ## Core screens and flows
 
 - Home: resume active puzzle, choose a new puzzle by band/SE range, enter training, open a puzzle string/link, and view recent completions.
-- Training: a curriculum hub and lesson player. Available techniques use bundled puzzle positions and progress through Learn, Find, Deduce, and Complete; future technique families remain visible as a roadmap without pretending unsupported detectors exist.
+- Training: a curriculum hub and lesson player spanning singles, intersections, subsets, fish, single-digit patterns, wings, coloring, chains, uniqueness, ALS, and forcing logic. Lessons use bundled puzzle positions where the local hint engine can derive them and focused original candidate diagrams for advanced patterns, then progress through Learn, Find, Deduce, and Complete.
 - Puzzle player: grid, number pad, normal/corner/centre modes, colour palette, undo/redo, timer, hint, settings, pause, and completion state.
 - Puzzle library: filters for difficulty, completion, source, and rating; accessible compact cards; deterministic random choice.
 - Import/share: accept common 81-character formats with `0` or `.` blanks, validate shape and uniqueness, and generate a URL-safe share link without uploading the puzzle.
@@ -103,7 +103,7 @@ The first release must support at least the techniques necessary for its bundled
 - Every puzzle exposes provenance, exact SE rating, rating engine/version, and friendly label.
 - Normal digits, corner marks, centre marks, colours, multi-cell selection, undo/redo, automatic candidates, highlighting, timer, save/resume, light/dark/system theme, and keyboard/touch flows work.
 - Hints name and explain logical techniques and visually mark the relevant evidence.
-- Training teaches every technique currently supported by the local hint engine through an interactive pattern and deduction exercise, works offline, and retains progress across signed-in devices.
+- Training teaches every technique currently supported by the local hint engine plus the documented advanced curriculum through interactive pattern and deduction exercises, works offline, and retains progress across signed-in devices.
 - Imported puzzles are validated and can be shared entirely client-side.
 - Responsive behavior is verified for a narrow phone viewport and desktop; controls remain usable in portrait and landscape.
 - Accessibility tests cover focus, names, contrast, non-colour cues, reduced motion, and keyboard-only completion of essential flows.

@@ -48,13 +48,27 @@ service cloud.firestore {
     }
     function validTrainingProgress(value) {
       return value is map
-        && value.keys().hasOnly(['naked-single', 'hidden-single', 'locked-candidates', 'naked-pair', 'naked-triple', 'x-wing'])
+        && value.keys().hasOnly(['naked-single', 'hidden-single', 'locked-candidates', 'naked-pair', 'naked-triple', 'x-wing', 'swordfish', 'jellyfish', 'skyscraper', 'two-string-kite', 'xy-wing', 'xyz-wing', 'w-wing', 'simple-coloring', 'x-chain', 'xy-chain', 'aic', 'unique-rectangle', 'als-xz', 'forcing-chain'])
         && (!('naked-single' in value) || validTrainingItem(value['naked-single']))
         && (!('hidden-single' in value) || validTrainingItem(value['hidden-single']))
         && (!('locked-candidates' in value) || validTrainingItem(value['locked-candidates']))
         && (!('naked-pair' in value) || validTrainingItem(value['naked-pair']))
         && (!('naked-triple' in value) || validTrainingItem(value['naked-triple']))
-        && (!('x-wing' in value) || validTrainingItem(value['x-wing']));
+        && (!('x-wing' in value) || validTrainingItem(value['x-wing']))
+        && (!('swordfish' in value) || validTrainingItem(value['swordfish']))
+        && (!('jellyfish' in value) || validTrainingItem(value['jellyfish']))
+        && (!('skyscraper' in value) || validTrainingItem(value['skyscraper']))
+        && (!('two-string-kite' in value) || validTrainingItem(value['two-string-kite']))
+        && (!('xy-wing' in value) || validTrainingItem(value['xy-wing']))
+        && (!('xyz-wing' in value) || validTrainingItem(value['xyz-wing']))
+        && (!('w-wing' in value) || validTrainingItem(value['w-wing']))
+        && (!('simple-coloring' in value) || validTrainingItem(value['simple-coloring']))
+        && (!('x-chain' in value) || validTrainingItem(value['x-chain']))
+        && (!('xy-chain' in value) || validTrainingItem(value['xy-chain']))
+        && (!('aic' in value) || validTrainingItem(value['aic']))
+        && (!('unique-rectangle' in value) || validTrainingItem(value['unique-rectangle']))
+        && (!('als-xz' in value) || validTrainingItem(value['als-xz']))
+        && (!('forcing-chain' in value) || validTrainingItem(value['forcing-chain']));
     }
     function validSettings() {
       let d = request.resource.data;

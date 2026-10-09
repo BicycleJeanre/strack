@@ -21,7 +21,7 @@ test("home, library and puzzle details expose the offline catalogue and SE prove
 test("training teaches a pattern before revealing its deduction and retains completion", async ({ page }) => {
   await page.getByRole("button", { name: "Train", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Technique lessons" })).toBeVisible();
-  await expect(page.locator("[data-training]")).toHaveCount(7);
+  await expect(page.locator("[data-training]")).toHaveCount(21);
   await page.getByRole("button", { name: /Naked single/ }).last().click();
   await expect(page.getByText("Step 1 · Learn")).toBeVisible();
   await page.getByRole("button", { name: "Practice this position" }).click();
@@ -36,6 +36,10 @@ test("training teaches a pattern before revealing its deduction and retains comp
   await expect(page.getByRole("heading", { name: "You used Naked single." })).toBeVisible();
   await page.getByRole("button", { name: "All lessons" }).click();
   await expect(page.getByRole("button", { name: /Naked single/ }).last()).toContainText("1 completed");
+  await page.getByRole("button", { name: /X-Chain/ }).click();
+  await expect(page.locator(".training-links .strong")).toHaveCount(2);
+  await expect(page.locator(".training-links .weak")).toHaveCount(1);
+  await expect(page.getByText(/Original STrack candidate diagram/)).toBeVisible();
 });
 
 test("the settings menu toggles back to the screen it opened from", async ({ page }) => {

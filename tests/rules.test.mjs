@@ -50,5 +50,5 @@ test("owners can store validated private settings", async () => {
   assert.equal(snapshot.data().activeGameId, "game-1");
   assert.equal(snapshot.data().deletedGames["old-game"], 1);
   assert.equal(snapshot.data().trainingProgress["naked-single"].mastered, true);
-  await assertFails(setDoc(doc(owner, "users/owner/meta/settings"), { ...settings, trainingProgress: Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`lesson-${index}`, {}])) }));
+  await assertFails(setDoc(doc(owner, "users/owner/meta/settings"), { ...settings, trainingProgress: { unknown: {} } }));
 });

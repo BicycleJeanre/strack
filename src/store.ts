@@ -26,7 +26,11 @@ export function emptyData(): AppData {
   };
 }
 
-const trainingIds = new Set<TrainingTechniqueId>(["naked-single", "hidden-single", "locked-candidates", "naked-pair", "naked-triple", "x-wing"]);
+const trainingIds = new Set<TrainingTechniqueId>([
+  "naked-single", "hidden-single", "locked-candidates", "naked-pair", "naked-triple", "x-wing",
+  "swordfish", "jellyfish", "skyscraper", "two-string-kite", "xy-wing", "xyz-wing", "w-wing",
+  "simple-coloring", "x-chain", "xy-chain", "aic", "unique-rectangle", "als-xz", "forcing-chain",
+]);
 
 function normalizeTrainingProgress(value: unknown): TrainingProgress {
   if (!value || typeof value !== "object") return {};

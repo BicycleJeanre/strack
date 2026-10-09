@@ -63,7 +63,7 @@ function shell(content: string, title: string) {
         <button data-nav="settings" class="${view === "settings" ? "active" : ""}" aria-label="${view === "settings" ? "Close settings and help" : "Settings and help"}" aria-pressed="${view === "settings"}">•••</button>
       </nav>
     </header>
-    <main id="main" tabindex="-1">
+    <main id="main" class="${view === "player" ? "player-main" : ""}" tabindex="-1">
       <div class="page-heading"><div><span class="eyebrow">${online ? "Ready offline" : "Offline"}</span><h1>${escapeHtml(title)}</h1></div></div>
       ${content}
     </main>`;

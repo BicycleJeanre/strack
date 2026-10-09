@@ -206,16 +206,24 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
   const centre = cell.locator(".centre-marks");
   await expect(corner.locator("i")).toHaveText("4");
   await expect(centre.locator("i")).toHaveText("6");
-  const cornerLayout = await corner.evaluate((element) => ({ position: getComputedStyle(element).position, justify: getComputedStyle(element).justifyContent, wrap: getComputedStyle(element).flexWrap }));
-  const centreLayout = await centre.evaluate((element) => ({ position: getComputedStyle(element).position, justify: getComputedStyle(element).justifyContent, transform: getComputedStyle(element).transform, wrap: getComputedStyle(element).flexWrap }));
-  const cornerColour = await corner.locator("i").evaluate((element) => getComputedStyle(element).color);
-  const centreColour = await centre.locator("i").evaluate((element) => getComputedStyle(element).color);
-  expect(cornerLayout).toEqual({ position: "absolute", justify: "flex-start", wrap: "wrap" });
-  expect(centreLayout.position).toBe("absolute");
-  expect(centreLayout.justify).toBe("center");
-  expect(centreLayout.transform).not.toBe("none");
-  expect(centreLayout.wrap).toBe("wrap");
-  expect(cornerColour).not.toBe(centreColour);
+  const noteStyles = await cell.evaluate((element) => {
+    const cornerMarks = element.querySelector<HTMLElement>(".corner-marks")!;
+    const centreMarks = element.querySelector<HTMLElement>(".centre-marks")!;
+    const cornerLayout = getComputedStyle(cornerMarks);
+    const centreLayout = getComputedStyle(centreMarks);
+    return {
+      corner: { position: cornerLayout.position, justify: cornerLayout.justifyContent, wrap: cornerLayout.flexWrap },
+      centre: { position: centreLayout.position, justify: centreLayout.justifyContent, transform: centreLayout.transform, wrap: centreLayout.flexWrap },
+      cornerColour: getComputedStyle(cornerMarks.querySelector("i")!).color,
+      centreColour: getComputedStyle(centreMarks.querySelector("i")!).color,
+    };
+  });
+  expect(noteStyles.corner).toEqual({ position: "absolute", justify: "flex-start", wrap: "wrap" });
+  expect(noteStyles.centre.position).toBe("absolute");
+  expect(noteStyles.centre.justify).toBe("center");
+  expect(noteStyles.centre.transform).not.toBe("none");
+  expect(noteStyles.centre.wrap).toBe("wrap");
+  expect(noteStyles.cornerColour).not.toBe(noteStyles.centreColour);
   await page.getByRole("button", { name: "Digit" }).click();
   await page.getByRole("button", { name: "5", exact: true }).click();
   await expect(empty.nth(0).locator(".cell-value")).toHaveText("5");
@@ -376,6 +384,25 @@ test("narrow phone and landscape controls do not overflow", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Get a logical hint" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/player-landscape.png", fullPage: true });
+});
+
+test("the puzzle board grows with available viewport width and height", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const board = page.getByRole("grid", { name: "Sudoku board" });
+  await expect(board).toBeVisible();
+  const compact = (await board.boundingBox())!;
+
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeGreaterThan(compact.width + 200);
+  const spacious = (await board.boundingBox())!;
+  expect(Math.abs(spacious.width - spacious.height)).toBeLessThan(1);
+  expect(spacious.width).toBeLessThanOrEqual(821);
+  expect(spacious.y + spacious.height).toBeLessThanOrEqual(1000);
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeGreaterThan(680);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("accessibility contract covers names, focus, contrast, reduced motion and keyboard-only import", async ({ page }) => {

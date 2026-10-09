@@ -35,6 +35,8 @@ Given and entered values share the normal cell background. The separate peer sha
 
 Peer shading is contextual: it appears only when the selected cell contains a placed value. Selecting an empty cell or a notes-only cell leaves its row, column, and box unshaded.
 
+The puzzle board automatically expands when more screen width and height are available. It remains square and height-aware on desktop, tablet, phone, and short landscape screens so the grid grows without forcing the puzzle controls off-screen.
+
 ## Recent and completed puzzles
 
 The home screen separates unfinished games under **Recent puzzles** from solved games under **Completed puzzles**. Each card has a delete control. Deletion removes the saved values, notes, colours, undo history, and elapsed time; while signed in, it also propagates through the private Firestore session to your other devices.

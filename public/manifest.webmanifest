@@ -1,0 +1,13 @@
+{
+  "name": "STrack Sudoku",
+  "short_name": "STrack",
+  "description": "Offline Sudoku with explanatory hints and transparent SE ratings.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101416",
+  "theme_color": "#101416",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

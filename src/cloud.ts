@@ -12,6 +12,7 @@ import {
 import {
   collection,
   connectFirestoreEmulator,
+  deleteDoc,
   doc,
   initializeFirestore,
   onSnapshot,
@@ -157,6 +158,9 @@ export class CloudSync {
     const settings = doc(database, "users", user.uid, "meta", "settings");
     this.stops.push(onSnapshot(games, { includeMetadataChanges: true }, async (snapshot) => {
       let updated = false;
+      for (const change of snapshot.docChanges()) {
+        if (change.type === "removed") updated = (await this.store.removeGame(change.doc.id)) || updated;
+      }
       for (const item of snapshot.docs) {
         const game = decodeCloudGame(item.data());
         if (game) updated = (await this.store.mergeCloudGame(game)) || updated;
@@ -197,6 +201,16 @@ export class CloudSync {
         const remoteGame = decodeCloudGame(remoteData);
         if (!remote.exists() || !remoteGame || remoteGame.updatedAt < game.updatedAt) transaction.set(reference, encodeCloudGame(game));
       });
+      this.error = "";
+    } catch {
+      this.fail();
+    }
+  }
+
+  async deleteGame(id: string) {
+    if (!this.user || !database) return;
+    try {
+      await deleteDoc(doc(database, "users", this.user.uid, "games", id));
       this.error = "";
     } catch {
       this.fail();

@@ -43,6 +43,62 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
   expect(await page.locator(".sudoku-cell.selected").count()).toBeGreaterThan(1);
 });
 
+test("all candidates are calculated into corner notes as one undoable action", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const empty = page.locator(".sudoku-cell:not(.given):not(.has-value)");
+  const emptyCount = await empty.count();
+  await page.getByRole("button", { name: "Calculate all candidates" }).click();
+  await expect(page.locator(".sudoku-cell:not(.given):not(.has-value) .corner-marks")).toHaveCount(emptyCount);
+  await expect(page.getByText("Candidates calculated for every empty cell")).toBeVisible();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(".sudoku-cell:not(.given) .corner-marks")).toHaveCount(0);
+});
+
+test("peer shading appears only when the selected cell contains a value", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const empty = page.locator(".sudoku-cell:not(.given)").first();
+  await empty.click();
+  await expect(page.locator(".sudoku-cell.peer")).toHaveCount(0);
+  await page.getByRole("button", { name: "Corner", exact: true }).click();
+  await page.locator('[data-digit="4"]').click();
+  await expect(empty.locator(".corner-marks")).toContainText("4");
+  await expect(page.locator(".sudoku-cell.peer")).toHaveCount(0);
+  await page.getByRole("button", { name: "Digit", exact: true }).click();
+  await page.locator('[data-digit="5"]').click();
+  await expect(empty.locator(".cell-value")).toHaveText("5");
+  expect(await page.locator(".sudoku-cell.peer").count()).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "Clear" }).click();
+  await expect(page.locator(".sudoku-cell.peer")).toHaveCount(0);
+});
+
+test("home separates completed puzzles and allows individual deletion", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  await page.getByRole("button", { name: /Home/ }).click();
+  await expect(page.getByRole("heading", { name: "Recent puzzles" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Completed puzzles", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Delete recent Easy puzzle/ }).click();
+  await page.getByRole("button", { name: "Delete puzzle", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "No puzzles in progress" })).toBeVisible();
+
+  await page.getByRole("button", { name: /Medium/ }).click();
+  await page.evaluate(async () => {
+    const request = indexedDB.open("strack-v1");
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const transaction = db.transaction("state", "readwrite");
+    const store = transaction.objectStore("state");
+    const data = await new Promise<any>((resolve, reject) => { const get = store.get("app"); get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error); });
+    data.games[data.activeGameId].completedAt = Date.now();
+    data.games[data.activeGameId].paused = true;
+    data.games[data.activeGameId].updatedAt = Date.now();
+    store.put(data, "app");
+    await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
+    db.close();
+  });
+  await page.reload();
+  await expect(page.getByRole("button", { name: /Review Medium puzzle/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No puzzles in progress" })).toBeVisible();
+});
+
 test("dragging across cells paints a multi-cell selection while clicks stay singular", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const empty = page.locator(".sudoku-cell:not(.given)");
@@ -225,6 +281,8 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
   await page.getByLabel("Theme").selectOption("dark");
   await page.getByRole("button", { name: "STrack home" }).click();
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  await page.locator(".sudoku-cell.given").first().click();
+  await expect(page.locator(".sudoku-cell.peer").first()).toBeVisible();
   const dark = await boardColours();
 
   await page.getByRole("button", { name: "Settings and help" }).click();

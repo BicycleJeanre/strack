@@ -25,11 +25,19 @@ When several cells are selected, entering a digit from normal **Digit** mode def
 
 Multi-cell notes use one selection-wide toggle: if any selected cell is missing the digit, STrack adds it to every selected cell. A second press removes it from every selected cell only once all of them contain it. Mixed selections therefore converge instead of swapping notes between cells.
 
+**Calculate all candidates** replaces the corner notes in every empty editable cell with the candidates currently allowed by its row, column, box, and recorded eliminations. The entire calculation is one undoable action.
+
 The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Selecting another filled cell or entering another digit updates all of those highlights together.
 
 Once all nine instances of a digit are placed, its number-pad button turns grey. Clearing or undoing one of those values restores the button immediately; the grey state is informational and does not block note entry or corrections.
 
 Given and entered values share the normal cell background. The separate peer shade identifies the selected cell's row, column, and box without implying that filled cells have a special state.
+
+Peer shading is contextual: it appears only when the selected cell contains a placed value. Selecting an empty cell or a notes-only cell leaves its row, column, and box unshaded.
+
+## Recent and completed puzzles
+
+The home screen separates unfinished games under **Recent puzzles** from solved games under **Completed puzzles**. Each card has a delete control. Deletion removes the saved values, notes, colours, undo history, and elapsed time; while signed in, it also propagates through the private Firestore session to your other devices.
 
 ## Keyboard shortcuts
 

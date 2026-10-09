@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { createGame, digitIsComplete, enterDigit, redo, selectCell, setMode, undo } from "../src/game.ts";
+import { createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, undo } from "../src/game.ts";
 import { applyHint as applyLogicalHint, candidateList, findHint, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
 
@@ -81,6 +81,16 @@ test("a digit is complete once all nine instances are placed", () => {
   assert.equal(digitIsComplete(values, 5), true);
   values[0] = "";
   assert.equal(digitIsComplete(values, 5), false);
+});
+
+test("all candidates can be calculated into corner notes and undone", () => {
+  const game = createGame(fixture, 1);
+  assert.equal(fillAllCandidates(game), true);
+  assert.deepEqual(game.corner[2], candidateList(game.values, 2));
+  assert.deepEqual(game.corner[3], candidateList(game.values, 3));
+  assert.equal(game.history.length, 1);
+  assert.equal(undo(game), true);
+  assert.deepEqual(game.corner[2], []);
 });
 
 test("catalogue has 20 valid, rated, provenance-complete puzzles in every band", async () => {

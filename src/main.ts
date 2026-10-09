@@ -1,7 +1,7 @@
 import "./style.css";
 import catalogueJson from "./data/puzzles.json";
 import { CloudSync, cloudConfigured, sendReset, signInAccount, signOutAccount, watchAuth, type CloudUser } from "./cloud.ts";
-import { applyColour, applyHint, clearSelected, createGame, digitIsComplete, enterDigit, moveSelection, redo, selectCell, setMode, undo } from "./game.ts";
+import { applyColour, applyHint, clearSelected, createGame, digitIsComplete, enterDigit, fillAllCandidates, moveSelection, redo, selectCell, setMode, undo } from "./game.ts";
 import { candidateList, cellLabel, findHint, normalizePuzzle, peers, validatePuzzle } from "./sudoku.ts";
 import { Store } from "./store.ts";
 import type { Difficulty, EntryMode, Game, Hint, Puzzle, Theme } from "./types.ts";
@@ -86,7 +86,10 @@ function metaPill(puzzle: Puzzle) {
 
 function renderHome() {
   const active = store.activeGame();
-  const recent = Object.values(store.data.games).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4);
+  const games = Object.values(store.data.games).sort((a, b) => b.updatedAt - a.updatedAt);
+  const recent = games.filter((game) => !game.completedAt).slice(0, 4);
+  const completed = games.filter((game) => game.completedAt).slice(0, 4);
+  const gameCards = (items: Game[], complete = false) => items.map((game) => `<article class="recent-card"><button class="recent-open" data-game="${game.id}" aria-label="${complete ? "Review" : "Open"} ${escapeHtml(game.puzzle.difficulty)} puzzle"><span>${metaPill(game.puzzle)}</span><strong>${complete ? `Completed · ${formatTime(game.elapsed)}` : `${Math.round(game.values.filter(Boolean).length / 81 * 100)}% filled`}</strong><small>${new Date(game.updatedAt).toLocaleDateString()}</small></button><button class="recent-delete" data-delete-game="${game.id}" aria-label="Delete ${complete ? "completed" : "recent"} ${escapeHtml(game.puzzle.difficulty)} puzzle">×</button></article>`).join("");
   shell(`
     <section class="hero card">
       <div><span class="eyebrow">Sudoku, thoughtfully</span><h2>${active ? "Your grid is waiting." : "A quieter way to solve."}</h2>
@@ -100,12 +103,29 @@ function renderHome() {
       }).join("")}</div>
     </section>
     <section aria-labelledby="recent-title"><div class="section-heading"><div><span class="eyebrow">On this device</span><h2 id="recent-title">Recent puzzles</h2></div></div>
-      ${recent.length ? `<div class="recent-list">${recent.map((game) => `<button class="recent-card" data-game="${game.id}"><span>${metaPill(game.puzzle)}</span><strong>${game.completedAt ? "Completed" : `${Math.round(game.values.filter(Boolean).length / 81 * 100)}% filled`}</strong><small>${new Date(game.updatedAt).toLocaleDateString()}</small></button>`).join("")}</div>` : `<div class="empty card"><span aria-hidden="true">⌁</span><h3>No local history yet</h3><p>Started and completed puzzles will stay here on this device.</p></div>`}
+      ${recent.length ? `<div class="recent-list">${gameCards(recent)}</div>` : `<div class="empty card"><span aria-hidden="true">⌁</span><h3>No puzzles in progress</h3><p>Start a puzzle and it will appear here.</p></div>`}
+    </section>
+    <section class="completed-section" aria-labelledby="completed-title"><div class="section-heading"><div><span class="eyebrow">Finished</span><h2 id="completed-title">Completed puzzles</h2></div></div>
+      ${completed.length ? `<div class="recent-list">${gameCards(completed, true)}</div>` : `<div class="empty card"><span aria-hidden="true">✓</span><h3>No completed puzzles yet</h3><p>Finished puzzles are kept separate from games in progress.</p></div>`}
     </section>`, `Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"}`);
   app.querySelector("#resume")?.addEventListener("click", () => { view = "player"; render(); });
   app.querySelector("#quick-start")?.addEventListener("click", () => startPuzzle(pickPuzzle("Easy")));
   app.querySelectorAll<HTMLElement>("[data-band]").forEach((button) => button.addEventListener("click", () => startPuzzle(pickPuzzle(button.dataset.band as Difficulty))));
   app.querySelectorAll<HTMLElement>("[data-game]").forEach((button) => button.addEventListener("click", async () => { store.data.activeGameId = button.dataset.game!; await store.saveSettings(); view = "player"; render(); }));
+  app.querySelectorAll<HTMLElement>("[data-delete-game]").forEach((button) => button.addEventListener("click", () => confirmDeleteGame(button.dataset.deleteGame!)));
+}
+
+function confirmDeleteGame(id: string) {
+  const game = store.data.games[id];
+  if (!game) return;
+  showDialog(`<h2>Delete puzzle?</h2><p>Remove this ${escapeHtml(game.puzzle.difficulty)} puzzle and its saved values, notes, colours, and history${cloudUser ? " from your synced devices" : " from this device"}?</p><button class="danger" id="confirm-delete-game">Delete puzzle</button>`, "Keep puzzle");
+  dialog.querySelector("#confirm-delete-game")!.addEventListener("click", async () => {
+    await store.removeGame(id);
+    await cloud.deleteGame(id);
+    dialog.close();
+    notify("Puzzle deleted");
+    renderHome();
+  });
 }
 
 function pickPuzzle(band: Difficulty): Puzzle {
@@ -167,7 +187,7 @@ function cellMarkup(game: Game, cell: number, hint: Hint | null): string {
   const selected = game.selected.includes(cell);
   const anchorValue = highlightedDigit ? String(highlightedDigit) : game.values[game.anchor];
   const noteDigit = (digit: number, present: boolean) => `<i${present && store.data.preferences.highlightMatches && anchorValue === String(digit) ? ` class="note-match"` : ""}>${present ? digit : ""}</i>`;
-  const classes = ["sudoku-cell", given ? "given" : "", value ? "has-value" : "", game.corner[cell].length ? "has-corner" : "", game.centre[cell].length ? "has-centre" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && anchorValue && value === anchorValue ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hint?.targets.some((target) => target.cell === cell) ? "hint-target" : "", game.colours[cell] ? `colour-${game.colours[cell]}` : ""].filter(Boolean).join(" ");
+  const classes = ["sudoku-cell", given ? "given" : "", value ? "has-value" : "", game.corner[cell].length ? "has-corner" : "", game.centre[cell].length ? "has-centre" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => game.values[chosen] && peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && anchorValue && value === anchorValue ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hint?.targets.some((target) => target.cell === cell) ? "hint-target" : "", game.colours[cell] ? `colour-${game.colours[cell]}` : ""].filter(Boolean).join(" ");
   let content = "";
   if (value) content = `<span class="cell-value">${value}</span>`;
   if (game.corner[cell].length) content += `<span class="corner-marks">${[1,2,3,4,5,6,7,8,9].map((digit) => noteDigit(digit, game.corner[cell].includes(digit))).join("")}</span>`;
@@ -218,6 +238,7 @@ function renderPlayer() {
         <div class="mode-switch" role="group" aria-label="Entry mode">${([['normal','Digit'],['corner','Corner'],['centre','Centre'],['colour','Colour']] as [EntryMode,string][]).map(([mode,label]) => `<button data-mode="${mode}" class="${game.mode === mode ? "active" : ""}" aria-pressed="${game.mode === mode}">${label}</button>`).join("")}</div>
         ${game.mode === "colour" ? `<div class="colour-pad" aria-label="Cell colours">${["cyan","amber","violet","green","rose","slate"].map((colour) => `<button data-colour="${colour}" class="colour-${colour}" aria-label="Apply ${colour} colour"><span></span></button>`).join("")}<button data-colour="" aria-label="Clear cell colour">×</button></div>` : `<div class="number-pad" aria-label="Number pad">${[1,2,3,4,5,6,7,8,9].map((digit) => { const complete = digitIsComplete(game.values, digit); return `<button data-digit="${digit}" class="${highlightedDigit === digit ? "active-digit " : ""}${complete ? "complete-digit" : ""}" aria-pressed="${highlightedDigit === digit}" aria-label="${digit}${complete ? ", all placed" : ""}">${digit}</button>`; }).join("")}<button id="clear" class="clear-key">Clear</button></div>`}
         <button id="multi" class="multi-toggle ${multiSelect ? "active" : ""}" aria-pressed="${multiSelect}"><span aria-hidden="true">▦</span> Multi-select ${multiSelect ? "on" : "off"}</button>
+        <button id="fill-candidates" class="secondary candidate-action">Calculate all candidates</button>
         <p class="control-help">Keyboard: arrows move · 1–9 enter · C corner · M centre · V colour · Shift extends selection · Ctrl/⌘ Z undo. Multi-cell notes add to all first, then remove from all.</p>
       </aside>
     </section>`, "Puzzle desk");
@@ -244,6 +265,7 @@ function bindPlayer(game: Game) {
   app.querySelector("#undo")?.addEventListener("click", () => changeGame(game, () => undo(game)));
   app.querySelector("#redo")?.addEventListener("click", () => changeGame(game, () => redo(game)));
   app.querySelector("#multi")?.addEventListener("click", () => { multiSelect = !multiSelect; renderPlayer(); });
+  app.querySelector("#fill-candidates")?.addEventListener("click", () => changeGame(game, () => { if (fillAllCandidates(game)) notify("Candidates calculated for every empty cell"); }));
   app.querySelector("#pause")?.addEventListener("click", () => changeGame(game, () => { game.paused = !game.paused; }));
   app.querySelector("#resume-board")?.addEventListener("click", () => changeGame(game, () => { game.paused = false; }));
   app.querySelector("#puzzle-info")?.addEventListener("click", () => showPuzzleInfo(game.puzzle));
@@ -447,7 +469,7 @@ function showDialog(content: string, closeLabel = "Done") {
 }
 
 function showHelp() {
-  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Corner is for Snyder marks; Centre is for candidate lists. Notes remain visible and editable when a cell also has an answer. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. The last digit entered remains active on the number pad and highlights matching placed values plus matching corner, centre, and automatic candidate notes until you select another cell or digit. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Corner is for Snyder marks; Centre is for candidate lists. Notes remain visible and editable when a cell also has an answer. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates fills every empty editable cell with its current canonical corner candidates as one undoable action. The last digit entered remains active on the number pad and highlights matching placed values plus matching corner, centre, and automatic candidate notes until you select another cell or digit. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
 }
 
 function accountError(error: unknown) {

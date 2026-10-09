@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test, { after, before } from "node:test";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 
 let environment;
 const puzzle = {
@@ -28,6 +28,8 @@ test("owners can store and read valid games while other users cannot", async () 
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/legacy"), { ...legacyGame, id: "legacy" }));
   await assertSucceeds(getDoc(doc(owner, "users/owner/games/game-1")));
   await assertFails(getDoc(doc(other, "users/owner/games/game-1")));
+  await assertFails(deleteDoc(doc(other, "users/owner/games/game-1")));
+  await assertSucceeds(deleteDoc(doc(owner, "users/owner/games/game-1")));
 });
 
 test("rules reject malformed games and unauthenticated writes", async () => {

@@ -56,7 +56,7 @@ service cloud.firestore {
     match /users/{uid}/games/{id} {
       allow read: if owner(uid);
       allow create, update: if owner(uid) && validGame(id);
-      allow delete: if false;
+      allow delete: if owner(uid);
     }
     match /users/{uid}/meta/settings {
       allow read: if owner(uid);

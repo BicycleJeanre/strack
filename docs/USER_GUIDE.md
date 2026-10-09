@@ -2,7 +2,9 @@
 
 ## Start and resume
 
-The home screen offers a deterministic daily choice in each difficulty band and keeps recent games on this device. If a puzzle is in progress, **Resume puzzle** returns to it. The library filters all 80 bundled puzzles by friendly band, exact SE range, and local progress.
+The home screen offers **Daily challenges** and **Weekly challenges**, each with one puzzle in Easy, Medium, Hard, and Diabolical. Daily selections change at midnight UTC; weekly selections use the ISO week. The choice is deterministic, so every player sees the same challenge from the bundled offline catalogue during that period. If you already started or completed it, its card shows that status and opens the same saved game. Signed-in sessions therefore continue naturally between a PC and phone.
+
+Home also keeps recent games on this device. If a puzzle is in progress, **Resume puzzle** returns to it. The library filters all 80 bundled puzzles by friendly band, exact SE range, and local progress.
 
 Every bundled puzzle works offline after the first successful production load. The status above the home title says whether the browser is online; it does not affect core play.
 

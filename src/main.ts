@@ -1,5 +1,6 @@
 import "./style.css";
 import catalogueJson from "./data/puzzles.json";
+import { challengePeriodKey, challengeSet, type ChallengeCadence } from "./challenges.ts";
 import { CloudSync, cloudConfigured, sendReset, signInAccount, signOutAccount, watchAuth, type CloudUser } from "./cloud.ts";
 import { applyColour, applyHint, clearColours, clearLines, clearSelected, createGame, digitIsComplete, enterDigit, fillAllCandidates, moveSelection, redo, selectCell, setMode, toggleLine, undo } from "./game.ts";
 import { candidateList, cellLabel, findHint, normalizePuzzle, peers, validatePuzzle } from "./sudoku.ts";
@@ -38,6 +39,7 @@ let trainingPatternRevealed = false;
 let trainingAnswerRevealed = false;
 type TrainingTrackId = typeof TRAINING_ROADMAP[number]["id"];
 let trainingTrack: TrainingTrackId | null = null;
+let challengeCadence: ChallengeCadence = "daily";
 const highlightedDigits = new Set<number>();
 const annotationColours: AnnotationColour[] = ["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"];
 const cloud = new CloudSync(store, () => {
@@ -123,6 +125,18 @@ function renderHome() {
   const games = Object.values(store.data.games).sort((a, b) => b.updatedAt - a.updatedAt);
   const recent = games.filter((game) => !game.completedAt).slice(0, 4);
   const completed = games.filter((game) => game.completedAt).slice(0, 4);
+  const challenges = challengeSet(catalogue, challengeCadence);
+  const periodKey = challengePeriodKey(challengeCadence);
+  const periodLabel = challengeCadence === "daily"
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeZone: "UTC" }).format(new Date())
+    : `ISO week ${Number(periodKey.slice(-2))}, ${periodKey.slice(0, 4)}`;
+  const challengeStatus = (puzzle: Puzzle) => {
+    const matching = games.filter((game) => game.puzzle.id === puzzle.id);
+    const current = matching.find((game) => !game.completedAt) || matching.find((game) => game.completedAt);
+    if (!current) return "Not started";
+    if (current.completedAt) return `Completed · ${formatTime(current.elapsed)}`;
+    return `Continue · ${Math.round(current.values.filter(Boolean).length / 81 * 100)}% filled`;
+  };
   const gameCards = (items: Game[], complete = false) => items.map((game) => `<article class="recent-card"><button class="recent-open" data-game="${game.id}" aria-label="${complete ? "Review" : "Open"} ${escapeHtml(game.puzzle.difficulty)} puzzle"><span>${metaPill(game.puzzle)}</span><strong>${complete ? `Completed · ${formatTime(game.elapsed)}` : `${Math.round(game.values.filter(Boolean).length / 81 * 100)}% filled`}</strong><small>${new Date(game.updatedAt).toLocaleDateString()}</small></button><button class="recent-delete" data-delete-game="${game.id}" aria-label="Delete ${complete ? "completed" : "recent"} ${escapeHtml(game.puzzle.difficulty)} puzzle">×</button></article>`).join("");
   shell(`
     <section class="hero card">
@@ -136,6 +150,13 @@ function renderHome() {
         return `<button class="band-card" data-band="${band}"><span class="band-mark ${band.toLowerCase()}"></span><strong>${band}</strong><small>${detail}</small></button>`;
       }).join("")}</div>
     </section>
+    <section class="challenge-section" aria-labelledby="challenge-title"><div class="section-heading challenge-heading"><div><span class="eyebrow">${escapeHtml(periodLabel)} · UTC</span><h2 id="challenge-title">${challengeCadence === "daily" ? "Daily" : "Weekly"} challenges</h2></div><div class="challenge-tabs" role="group" aria-label="Challenge schedule"><button data-challenge-cadence="daily" aria-pressed="${challengeCadence === "daily"}">Today</button><button data-challenge-cadence="weekly" aria-pressed="${challengeCadence === "weekly"}">This week</button></div></div>
+      <p class="challenge-intro">One shared offline puzzle at every difficulty. Return on any signed-in device to continue the same saved grid.</p>
+      <div class="challenge-grid">${challenges.map((puzzle) => {
+        const status = puzzleStatus(puzzle);
+        return `<button class="challenge-card card ${status}" data-challenge-puzzle="${puzzle.id}" aria-label="${escapeHtml(puzzle.difficulty)} ${challengeCadence} challenge, ${challengeStatus(puzzle)}"><span class="challenge-calendar" aria-hidden="true"><i>${challengeCadence === "daily" ? "DAY" : "WK"}</i><b>${challengeCadence === "daily" ? periodKey.slice(-2) : Number(periodKey.slice(-2))}</b></span><span><span>${metaPill(puzzle)}</span><strong>${escapeHtml(puzzle.difficulty)} challenge</strong><small>${challengeStatus(puzzle)}</small></span><span class="challenge-arrow" aria-hidden="true">→</span></button>`;
+      }).join("")}</div>
+    </section>
     <section class="training-callout card" aria-labelledby="training-home-title"><div><span class="eyebrow">Technique training</span><h2 id="training-home-title">Learn the logic, not the answer</h2><p>Short guided lessons use real puzzle positions and focused candidate diagrams to build pattern recognition. Your progress works offline and syncs when you sign in.</p></div><button class="primary compact" data-nav="training">Start training</button></section>
     <section aria-labelledby="recent-title"><div class="section-heading"><div><span class="eyebrow">On this device</span><h2 id="recent-title">Recent puzzles</h2></div></div>
       ${recent.length ? `<div class="recent-list">${gameCards(recent)}</div>` : `<div class="empty card"><span aria-hidden="true">⌁</span><h3>No puzzles in progress</h3><p>Start a puzzle and it will appear here.</p></div>`}
@@ -146,8 +167,25 @@ function renderHome() {
   app.querySelector("#resume")?.addEventListener("click", () => { view = "player"; render(); });
   app.querySelector("#quick-start")?.addEventListener("click", () => startPuzzle(pickPuzzle("Easy")));
   app.querySelectorAll<HTMLElement>("[data-band]").forEach((button) => button.addEventListener("click", () => startPuzzle(pickPuzzle(button.dataset.band as Difficulty))));
+  app.querySelectorAll<HTMLElement>("[data-challenge-cadence]").forEach((button) => button.addEventListener("click", () => { challengeCadence = button.dataset.challengeCadence as ChallengeCadence; renderHome(); }));
+  app.querySelectorAll<HTMLElement>("[data-challenge-puzzle]").forEach((button) => button.addEventListener("click", () => openChallenge(button.dataset.challengePuzzle!)));
   app.querySelectorAll<HTMLElement>("[data-game]").forEach((button) => button.addEventListener("click", async () => { store.data.activeGameId = button.dataset.game!; await store.saveSettings(); view = "player"; render(); }));
   app.querySelectorAll<HTMLElement>("[data-delete-game]").forEach((button) => button.addEventListener("click", () => confirmDeleteGame(button.dataset.deleteGame!)));
+}
+
+async function openChallenge(puzzleId: string) {
+  const puzzle = catalogue.find((item) => item.id === puzzleId);
+  if (!puzzle) return;
+  const existing = Object.values(store.data.games)
+    .filter((game) => game.puzzle.id === puzzle.id)
+    .sort((left, right) => Number(Boolean(left.completedAt)) - Number(Boolean(right.completedAt)) || right.updatedAt - left.updatedAt)[0];
+  if (!existing) return startPuzzle(puzzle);
+  store.data.activeGameId = existing.id;
+  highlightMode = false;
+  highlightOnly(Number(existing.values[existing.anchor]) || null);
+  await store.saveSettings();
+  view = "player";
+  render();
 }
 
 function trainingStatus(id: TrainingTechniqueId) {
@@ -728,6 +766,7 @@ function showDialog(content: string, closeLabel = "Done") {
 
 function showHelp() {
   showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Training</h3><p>Train contains 20 lessons from singles through fish, wings, coloring, chains, uniqueness, ALS-XZ, and forcing chains. Each moves through Learn, Find, Deduce, and Complete. A clue highlights the pattern without naming the candidate; Show answer is a separate, explicit fallback. Core lessons use bundled puzzle positions, advanced lessons use focused candidate diagrams with strong and weak link lines, and all progress works offline and syncs across signed-in devices.</p><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour offers nine independently toggled shades; cells divide into equal segments when several are applied, with dots as a second cue. Lines uses the same palette: drag between cells, or select exactly two and connect them. Repeating a colored connection removes it; choosing another color recolors it. All annotations support undo, offline saves, backup, and signed-in sync. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, L for lines, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique without revealing the digit or exact elimination. Show answer explicitly reveals the deduction; only then does Apply deduction become available. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, training, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions, training progress, and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+  dialog.querySelector("h2")?.insertAdjacentHTML("afterend", `<h3>Daily and weekly challenges</h3><p>Home offers one daily and one weekly puzzle in every difficulty. The selections are based on the UTC date or ISO week, so everyone receives the same bundled puzzle and it remains available offline. Opening a challenge resumes its existing saved game; signed-in progress follows you between devices through the same private Firestore session as every other puzzle.</p>`);
 }
 
 function accountError(error: unknown) {

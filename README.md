@@ -7,6 +7,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 ## Release 1
 
 - 80 public-domain, uniquely solvable puzzles: 20 each in Easy, Medium, Hard, and Diabolical.
+- Deterministic daily and weekly challenges for every difficulty, selected from the offline catalogue using UTC periods and connected to the same resumable local/Firestore game sessions as the library.
 - Exact `SE` ratings, friendly bands, stable source IDs, catalogue version, and provenance visible for every bundled puzzle.
 - Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, nine stackable cell colours, coloured lines between cells, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.

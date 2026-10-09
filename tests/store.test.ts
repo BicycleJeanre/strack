@@ -41,8 +41,9 @@ test("cloud merge keeps the newest puzzle and settings versions", async () => {
   assert.equal(await store.mergeCloudGame(newer), true);
   assert.equal(store.data.games[local.id].values[0], "3");
   const remotePreferences = { ...store.data.preferences, theme: "dark" as const };
-  assert.equal(await store.mergeCloudSettings({ preferences: remotePreferences, activeGameId: local.id, updatedAt: store.data.settingsUpdatedAt + 10 }), true);
+  assert.equal(await store.mergeCloudSettings({ preferences: remotePreferences, activeGameId: local.id, trainingProgress: { "naked-single": { attempts: 3, correct: 3, completed: 3, mastered: true, lastPracticedAt: 123 } }, updatedAt: store.data.settingsUpdatedAt + 10 }), true);
   assert.equal(store.data.preferences.theme, "dark");
+  assert.equal(store.data.trainingProgress["naked-single"]?.mastered, true);
 });
 
 test("deleted puzzles stay deleted when a stale cloud game arrives", async () => {

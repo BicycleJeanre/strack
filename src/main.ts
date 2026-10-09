@@ -4,14 +4,15 @@ import { CloudSync, cloudConfigured, sendReset, signInAccount, signOutAccount, w
 import { applyColour, applyHint, clearColours, clearLines, clearSelected, createGame, digitIsComplete, enterDigit, fillAllCandidates, moveSelection, redo, selectCell, setMode, toggleLine, undo } from "./game.ts";
 import { candidateList, cellLabel, findHint, normalizePuzzle, peers, validatePuzzle } from "./sudoku.ts";
 import { Store } from "./store.ts";
-import type { AnnotationColour, Difficulty, EntryMode, Game, Hint, Puzzle, Theme } from "./types.ts";
+import { deductionMatches, findTrainingPosition, patternCells, patternMatches, TRAINING_ROADMAP, TRAINING_TECHNIQUES, trainingTechnique, type TrainingPosition } from "./training.ts";
+import type { AnnotationColour, Difficulty, EntryMode, Game, Hint, Puzzle, Theme, TrainingTechniqueId } from "./types.ts";
 
 const catalogue = catalogueJson as Puzzle[];
 const store = new Store();
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const dialog = document.querySelector<HTMLDialogElement>("#dialog")!;
 const toast = document.querySelector<HTMLDivElement>("#toast")!;
-type View = "home" | "library" | "player" | "import" | "settings";
+type View = "home" | "training" | "library" | "player" | "import" | "settings";
 let view: View = "home";
 let viewBeforeSettings: Exclude<View, "settings"> = "home";
 let libraryBand: Difficulty | "All" = "All";
@@ -28,11 +29,18 @@ let suppressCellClick = false;
 let celebratingGameId: string | null = null;
 let celebrationTimer: number | null = null;
 let activeAnnotationColour: AnnotationColour = "cyan";
+let activeTraining: TrainingTechniqueId | null = null;
+let trainingStage: "learn" | "find" | "deduce" | "complete" = "learn";
+let trainingSelection = new Set<number>();
+let trainingFeedback = "";
+let trainingAssisted = false;
+let trainingPatternRevealed = false;
+let trainingAnswerRevealed = false;
 const highlightedDigits = new Set<number>();
 const annotationColours: AnnotationColour[] = ["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"];
 const cloud = new CloudSync(store, () => {
   document.querySelectorAll<HTMLElement>("[data-cloud-status]").forEach((element) => { element.textContent = cloud.status(); });
-  if (["home", "library", "settings"].includes(view) && app.querySelector("main")) render();
+  if (["home", "training", "library", "settings"].includes(view) && app.querySelector("main")) render();
 });
 
 const escapeHtml = (value: unknown) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]!);
@@ -64,6 +72,7 @@ function shell(content: string, title: string) {
     <header class="app-header">
       <button class="brand" data-nav="home" aria-label="STrack home"><span class="brand-grid" aria-hidden="true">S</span><span>STrack</span></button>
       <span class="cloud-state" data-cloud-status>${cloud.status()}</span><nav aria-label="Main navigation">
+        <button data-nav="training" class="${view === "training" ? "active" : ""}">Train</button>
         <button data-nav="library" class="${view === "library" ? "active" : ""}">Puzzles</button>
         <button data-nav="import" class="${view === "import" ? "active" : ""}">Open</button>
         <button data-nav="settings" class="${view === "settings" ? "active" : ""}" aria-label="${view === "settings" ? "Close settings and help" : "Settings and help"}" aria-pressed="${view === "settings"}">•••</button>
@@ -125,6 +134,7 @@ function renderHome() {
         return `<button class="band-card" data-band="${band}"><span class="band-mark ${band.toLowerCase()}"></span><strong>${band}</strong><small>${detail}</small></button>`;
       }).join("")}</div>
     </section>
+    <section class="training-callout card" aria-labelledby="training-home-title"><div><span class="eyebrow">Technique training</span><h2 id="training-home-title">Learn the logic, not the answer</h2><p>Short guided lessons turn real puzzle positions into pattern-finding practice. Your progress works offline and syncs when you sign in.</p></div><button class="primary compact" data-nav="training">Start training</button></section>
     <section aria-labelledby="recent-title"><div class="section-heading"><div><span class="eyebrow">On this device</span><h2 id="recent-title">Recent puzzles</h2></div></div>
       ${recent.length ? `<div class="recent-list">${gameCards(recent)}</div>` : `<div class="empty card"><span aria-hidden="true">⌁</span><h3>No puzzles in progress</h3><p>Start a puzzle and it will appear here.</p></div>`}
     </section>
@@ -136,6 +146,103 @@ function renderHome() {
   app.querySelectorAll<HTMLElement>("[data-band]").forEach((button) => button.addEventListener("click", () => startPuzzle(pickPuzzle(button.dataset.band as Difficulty))));
   app.querySelectorAll<HTMLElement>("[data-game]").forEach((button) => button.addEventListener("click", async () => { store.data.activeGameId = button.dataset.game!; await store.saveSettings(); view = "player"; render(); }));
   app.querySelectorAll<HTMLElement>("[data-delete-game]").forEach((button) => button.addEventListener("click", () => confirmDeleteGame(button.dataset.deleteGame!)));
+}
+
+function trainingStatus(id: TrainingTechniqueId) {
+  const progress = store.data.trainingProgress[id];
+  if (progress?.mastered) return "Mastered";
+  if (progress?.completed) return `${progress.completed} completed`;
+  return "Not started";
+}
+
+function renderTrainingHub() {
+  const mastered = TRAINING_TECHNIQUES.filter((technique) => store.data.trainingProgress[technique.id]?.mastered).length;
+  const completed = TRAINING_TECHNIQUES.filter((technique) => store.data.trainingProgress[technique.id]?.completed).length;
+  const recommended = TRAINING_TECHNIQUES.find((technique) => !store.data.trainingProgress[technique.id]?.mastered) || TRAINING_TECHNIQUES[0];
+  shell(`
+    <section class="training-hero card"><div><span class="eyebrow">Guided curriculum</span><h2>Understand one pattern at a time.</h2><p>Each lesson shows the idea, asks you to find it in a real offline puzzle position, then makes you choose the deduction yourself.</p></div><div class="training-progress" aria-label="Training progress"><strong>${mastered}/${TRAINING_TECHNIQUES.length}</strong><span>mastered · ${completed} explored</span></div></section>
+    <section class="training-next card"><div><span class="eyebrow">Recommended next</span><h2>${escapeHtml(recommended.title)}</h2><p>${escapeHtml(recommended.concept)}</p></div><button class="primary compact" data-training="${recommended.id}">${store.data.trainingProgress[recommended.id]?.completed ? "Practice again" : "Begin lesson"}</button></section>
+    <section aria-labelledby="lessons-title"><div class="section-heading"><div><span class="eyebrow">Available offline</span><h2 id="lessons-title">Technique lessons</h2></div></div><div class="lesson-grid">${TRAINING_TECHNIQUES.map((technique) => {
+      const progress = store.data.trainingProgress[technique.id];
+      return `<button class="lesson-card card ${progress?.mastered ? "mastered" : ""}" data-training="${technique.id}"><span class="lesson-level">${technique.level}</span><span><small>${escapeHtml(technique.family)}</small><strong>${escapeHtml(technique.title)}</strong><em>${trainingStatus(technique.id)}</em></span><span aria-hidden="true">→</span></button>`;
+    }).join("")}</div></section>
+    <section aria-labelledby="roadmap-title"><div class="section-heading"><div><span class="eyebrow">The road ahead</span><h2 id="roadmap-title">From first singles to expert chains</h2></div></div><div class="roadmap-grid">${TRAINING_ROADMAP.map((track) => `<article class="roadmap-card card ${track.available ? "available" : "planned"}"><span>${track.available ? "Available" : "Planned"}</span><h3>${escapeHtml(track.title)}</h3><p>${escapeHtml(track.detail)}</p></article>`).join("")}</div></section>`, "Training");
+  app.querySelectorAll<HTMLElement>("[data-training]").forEach((button) => button.addEventListener("click", () => openTraining(button.dataset.training as TrainingTechniqueId)));
+}
+
+function openTraining(id: TrainingTechniqueId) {
+  activeTraining = id;
+  trainingStage = "learn";
+  trainingSelection = new Set();
+  trainingFeedback = "";
+  trainingAssisted = false;
+  trainingPatternRevealed = false;
+  trainingAnswerRevealed = false;
+  renderTrainingLesson();
+}
+
+function trainingBoard(position: TrainingPosition, stage: typeof trainingStage, reveal = false) {
+  const focus = new Set(patternCells(position));
+  const evidence = new Set(position.hint.evidence);
+  const targets = new Set(position.hint.targets.map((target) => `${target.cell}-${target.digit}`));
+  return `<div class="training-board sudoku-board" role="grid" aria-label="Training Sudoku grid">${position.values.map((value, cell) => {
+    const given = position.puzzle.givens[cell] !== "0";
+    const selected = trainingSelection.has(cell);
+    const showPattern = stage === "learn" || reveal;
+    const classes = ["training-cell", "sudoku-cell", value ? "has-value" : "", given ? "given" : "", selected ? "selected" : "", showPattern && evidence.has(cell) ? "training-evidence" : "", showPattern && focus.has(cell) ? "training-focus" : ""].filter(Boolean).join(" ");
+    const candidates = position.candidates[cell];
+    const content = value ? `<span class="cell-value">${value}</span>` : `<span class="training-candidates">${Array.from({ length: 9 }, (_, index) => index + 1).map((digit) => {
+      if (!candidates.includes(digit)) return `<i aria-hidden="true"></i>`;
+      const target = targets.has(`${cell}-${digit}`);
+      const candidateClass = stage === "learn" && target ? position.hint.kind === "place" ? "training-answer" : "training-elimination" : stage === "deduce" && reveal && target ? "training-answer" : "";
+      return stage === "deduce" ? `<button class="training-candidate ${candidateClass}" data-training-cell="${cell}" data-training-digit="${digit}" aria-label="Candidate ${digit}, ${cellLabel(cell)}">${digit}</button>` : `<i class="${candidateClass}">${digit}</i>`;
+    }).join("")}</span>`;
+    if (stage === "find" && !value) return `<button class="${classes}" data-training-select="${cell}" aria-label="${cellLabel(cell)}, empty" aria-pressed="${selected}">${content}</button>`;
+    return `<div class="${classes}" aria-label="${cellLabel(cell)}${value ? `, ${value}` : ", empty"}">${content}</div>`;
+  }).join("")}</div>`;
+}
+
+function renderTrainingLesson() {
+  if (!activeTraining) return renderTrainingHub();
+  const technique = trainingTechnique(activeTraining);
+  const position = findTrainingPosition(activeTraining, catalogue);
+  if (!position) { activeTraining = null; notify("That lesson position is unavailable"); return renderTrainingHub(); }
+  const stageNumber = trainingStage === "learn" ? 1 : trainingStage === "find" ? 2 : trainingStage === "deduce" ? 3 : 4;
+  const reveal = trainingStage === "find" ? trainingPatternRevealed : trainingStage === "deduce" ? trainingAnswerRevealed : false;
+  let panel = "";
+  if (trainingStage === "learn") panel = `<span class="eyebrow">Step 1 · Learn</span><h2>${escapeHtml(technique.title)}</h2><p class="lesson-concept">${escapeHtml(technique.concept)}</p><div class="lesson-explanation"><strong>In this position</strong><p>${escapeHtml(position.hint.summary)} ${escapeHtml(position.hint.explanation)}</p></div><button class="primary" id="training-practice">Practice this position</button>`;
+  else if (trainingStage === "find") panel = `<span class="eyebrow">Step 2 · Find the pattern</span><h2>${escapeHtml(technique.findPrompt)}</h2><p>Tap cells to select or deselect them, then check your pattern.</p>${trainingFeedback ? `<p class="training-feedback" role="status">${escapeHtml(trainingFeedback)}</p>` : ""}<div class="stack-actions"><button class="primary" id="training-check-pattern">Check pattern</button><button class="secondary" id="training-clue">${reveal ? "Clue shown" : "Show a clue"}</button></div>`;
+  else if (trainingStage === "deduce") panel = `<span class="eyebrow">Step 3 · Make the deduction</span><h2>${escapeHtml(technique.deductionPrompt)}</h2><p>Tap a candidate in the grid. ${position.hint.kind === "place" ? "A correct choice places it." : "A correct choice removes it."}</p>${trainingFeedback ? `<p class="training-feedback" role="status">${escapeHtml(trainingFeedback)}</p>` : ""}<button class="secondary" id="training-answer">${reveal ? "Answer shown" : "Show the answer"}</button>`;
+  else panel = `<span class="eyebrow">Lesson complete</span><h2>You used ${escapeHtml(technique.title)}.</h2><p>${trainingAssisted ? "You completed the reasoning with guidance. Repeat it without a clue to build independent mastery." : "You found the pattern and made the deduction independently."}</p><div class="training-complete-mark" aria-hidden="true">✓</div><div class="stack-actions"><button class="primary" id="training-repeat">Practice again</button><button class="secondary" id="training-next">Next technique</button><button class="text-button" id="training-all">All lessons</button></div>`;
+  shell(`<div class="lesson-toolbar"><button class="text-button" id="training-back">← All training</button><div class="lesson-steps" aria-label="Lesson progress">${[1,2,3,4].map((step) => `<i class="${step <= stageNumber ? "active" : ""}">${step}</i>`).join("")}</div></div><section class="lesson-player"><div>${trainingBoard(position, trainingStage, reveal)}</div><aside class="lesson-panel card">${panel}</aside></section><p class="training-source">Practice position from the bundled ${escapeHtml(position.puzzle.source)} catalogue · ${escapeHtml(position.puzzle.difficulty)} · SE ${position.puzzle.seRating?.toFixed(1) ?? "unrated"}</p>`, `${technique.title} training`);
+  app.querySelector("#training-back")?.addEventListener("click", () => { activeTraining = null; renderTrainingHub(); });
+  app.querySelector("#training-practice")?.addEventListener("click", () => { trainingStage = "find"; trainingSelection.clear(); trainingFeedback = ""; renderTrainingLesson(); });
+  app.querySelectorAll<HTMLElement>("[data-training-select]").forEach((cell) => cell.addEventListener("click", () => { const index = Number(cell.dataset.trainingSelect); if (trainingSelection.has(index)) trainingSelection.delete(index); else trainingSelection.add(index); trainingFeedback = ""; renderTrainingLesson(); }));
+  app.querySelector("#training-clue")?.addEventListener("click", () => { trainingAssisted = true; trainingPatternRevealed = true; trainingFeedback = `Look for ${patternCells(position).length} highlighted ${patternCells(position).length === 1 ? "cell" : "cells"}.`; renderTrainingLesson(); });
+  app.querySelector("#training-check-pattern")?.addEventListener("click", () => {
+    if (!patternMatches(trainingSelection, position)) { trainingFeedback = "Not quite. Recheck the candidates and the unit they share."; return renderTrainingLesson(); }
+    trainingStage = "deduce"; trainingFeedback = "Pattern found. Now make the logical deduction."; renderTrainingLesson();
+  });
+  app.querySelector("#training-answer")?.addEventListener("click", () => { trainingAssisted = true; trainingAnswerRevealed = true; trainingFeedback = "The correct candidate is emphasized in the grid."; renderTrainingLesson(); });
+  app.querySelectorAll<HTMLElement>("[data-training-digit]").forEach((candidate) => candidate.addEventListener("click", async () => {
+    if (!deductionMatches(Number(candidate.dataset.trainingCell), Number(candidate.dataset.trainingDigit), position)) { trainingFeedback = "That candidate is not justified by this pattern. Follow the highlighted cells through their shared unit."; return renderTrainingLesson(); }
+    await completeTraining(activeTraining!);
+  }));
+  app.querySelector("#training-repeat")?.addEventListener("click", () => openTraining(activeTraining!));
+  app.querySelector("#training-all")?.addEventListener("click", () => { activeTraining = null; renderTrainingHub(); });
+  app.querySelector("#training-next")?.addEventListener("click", () => { const index = TRAINING_TECHNIQUES.findIndex((item) => item.id === activeTraining); openTraining(TRAINING_TECHNIQUES[(index + 1) % TRAINING_TECHNIQUES.length].id); });
+}
+
+async function completeTraining(id: TrainingTechniqueId) {
+  const previous = store.data.trainingProgress[id] || { attempts: 0, correct: 0, completed: 0, mastered: false, lastPracticedAt: 0 };
+  const attempts = previous.attempts + 1;
+  const correct = previous.correct + (trainingAssisted ? 0 : 1);
+  const completed = previous.completed + 1;
+  store.data.trainingProgress[id] = { attempts, correct, completed, mastered: completed >= 3 && correct / attempts >= 2 / 3, lastPracticedAt: Date.now() };
+  await store.saveSettings();
+  trainingStage = "complete";
+  trainingFeedback = "";
+  renderTrainingLesson();
 }
 
 function confirmDeleteGame(id: string) {
@@ -544,7 +651,7 @@ function renderSettings() {
   shell(`
     <section class="settings-grid">
       <div class="card settings-card account-card"><span class="eyebrow">Cross-device sessions</span><h2>${cloudUser ? "Progress sync is on" : "Continue on another device"}</h2>
-        ${!cloudConfigured ? `<p>Cloud sessions are not configured in this build. Device-only play remains fully available.</p>` : cloudUser ? `<p>Signed in as <strong>${escapeHtml(cloudUser.email || "your account")}</strong>. Puzzle edits, notation, cell colours, drawn lines, elapsed time, completion history, and preferences sync through your private Firestore account.</p><p class="sync-message ${cloud.error ? "error" : ""}" data-cloud-status>${escapeHtml(cloud.status())}</p>${cloud.error ? `<p class="error">${escapeHtml(cloud.error)}</p><button id="retry-sync" class="secondary">Retry sync</button>` : ""}<button id="sign-out" class="secondary">Sign out on this device</button>` : `<p>Create an account or sign in with the same email on your PC and phone. Offline edits remain on each device and reconcile by the newest saved puzzle version when a connection returns.</p><form id="account-form"><label>Email<input id="account-email" type="email" autocomplete="email" required /></label><label>Password<input id="account-password" type="password" autocomplete="current-password" minlength="6" required /></label><div class="actions"><button class="primary compact" type="submit">Sign in</button><button class="secondary compact" type="submit" data-create="true">Create account</button></div><button class="text-button" type="button" id="reset-password">Send password reset email</button><p id="account-feedback" role="status"></p></form>`}
+        ${!cloudConfigured ? `<p>Cloud sessions are not configured in this build. Device-only play remains fully available.</p>` : cloudUser ? `<p>Signed in as <strong>${escapeHtml(cloudUser.email || "your account")}</strong>. Puzzle edits, notation, cell colours, drawn lines, elapsed time, completion history, preferences, and training progress sync through your private Firestore account.</p><p class="sync-message ${cloud.error ? "error" : ""}" data-cloud-status>${escapeHtml(cloud.status())}</p>${cloud.error ? `<p class="error">${escapeHtml(cloud.error)}</p><button id="retry-sync" class="secondary">Retry sync</button>` : ""}<button id="sign-out" class="secondary">Sign out on this device</button>` : `<p>Create an account or sign in with the same email on your PC and phone. Offline puzzle and training progress remains on each device and reconciles by the newest saved version when a connection returns.</p><form id="account-form"><label>Email<input id="account-email" type="email" autocomplete="email" required /></label><label>Password<input id="account-password" type="password" autocomplete="current-password" minlength="6" required /></label><div class="actions"><button class="primary compact" type="submit">Sign in</button><button class="secondary compact" type="submit" data-create="true">Create account</button></div><button class="text-button" type="button" id="reset-password">Send password reset email</button><p id="account-feedback" role="status"></p></form>`}
       </div>
       <div class="card settings-card"><span class="eyebrow">Appearance</span><h2>Make the desk yours</h2><label>Theme<select id="theme">${(["system","light","dark"] as Theme[]).map((theme) => `<option value="${theme}" ${theme === preferences.theme ? "selected" : ""}>${theme[0].toUpperCase() + theme.slice(1)}</option>`).join("")}</select></label>${toggle("showTimer", "Show timer", "Keep time available without turning it into a score.", preferences.showTimer)}${toggle("highlightPeers", "Highlight peers", "Shade cells sharing a row, column, or box.", preferences.highlightPeers)}${toggle("highlightMatches", "Highlight matching digits", "Show every copy of the selected digit.", preferences.highlightMatches)}</div>
       <div class="card settings-card"><span class="eyebrow">Assistance</span><h2>Notation and checks</h2>${toggle("autoCandidates", "Automatic candidates", "Show canonical candidates in empty cells with no notes.", preferences.autoCandidates)}${toggle("cleanCandidates", "Clean notes after entry", "Remove a placed digit from peer notes.", preferences.cleanCandidates)}${toggle("showMistakes", "Show conflicts with solution", "Add a symbol and outline; never rely on colour alone.", preferences.showMistakes)}</div>
@@ -604,7 +711,7 @@ function showDialog(content: string, closeLabel = "Done") {
 }
 
 function showHelp() {
-  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour offers nine independently toggled shades; cells divide into equal segments when several are applied, with dots as a second cue. Lines uses the same palette: drag between cells, or select exactly two and connect them. Repeating a colored connection removes it; choosing another color recolors it. All annotations support undo, offline saves, backup, and signed-in sync. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, L for lines, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique without revealing the digit or exact elimination. Show answer explicitly reveals the deduction; only then does Apply deduction become available. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Training</h3><p>Train teaches the six techniques supported by the local solver through Learn, Find, Deduce, and Complete. A clue highlights the pattern without naming the candidate; Show answer is a separate, explicit fallback. Lessons use bundled puzzle positions, work offline, and retain independent or assisted progress across signed-in devices.</p><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour offers nine independently toggled shades; cells divide into equal segments when several are applied, with dots as a second cue. Lines uses the same palette: drag between cells, or select exactly two and connect them. Repeating a colored connection removes it; choosing another color recolors it. All annotations support undo, offline saves, backup, and signed-in sync. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, L for lines, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique without revealing the digit or exact elimination. Show answer explicitly reveals the deduction; only then does Apply deduction become available. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, training, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions, training progress, and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
 }
 
 function accountError(error: unknown) {
@@ -620,6 +727,7 @@ function accountError(error: unknown) {
 function render() {
   applyTheme();
   if (view === "home") renderHome();
+  else if (view === "training") activeTraining ? renderTrainingLesson() : renderTrainingHub();
   else if (view === "library") renderLibrary();
   else if (view === "player") renderPlayer();
   else if (view === "import") renderImport();

@@ -18,6 +18,26 @@ test("home, library and puzzle details expose the offline catalogue and SE prove
   await expect(page.getByRole("dialog")).toContainText("not a universal or official difficulty scale");
 });
 
+test("training teaches a pattern before revealing its deduction and retains completion", async ({ page }) => {
+  await page.getByRole("button", { name: "Train", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Technique lessons" })).toBeVisible();
+  await expect(page.locator("[data-training]")).toHaveCount(7);
+  await page.getByRole("button", { name: /Naked single/ }).last().click();
+  await expect(page.getByText("Step 1 · Learn")).toBeVisible();
+  await page.getByRole("button", { name: "Practice this position" }).click();
+  await page.getByRole("button", { name: "Show a clue" }).click();
+  await expect(page.locator(".training-candidate.training-answer")).toHaveCount(0);
+  await page.locator(".training-focus[data-training-select]").click();
+  await page.getByRole("button", { name: "Check pattern" }).click();
+  await expect(page.getByText("Step 3 · Make the deduction")).toBeVisible();
+  await expect(page.locator(".training-candidate.training-answer")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show the answer" }).click();
+  await page.locator(".training-candidate.training-answer").click();
+  await expect(page.getByRole("heading", { name: "You used Naked single." })).toBeVisible();
+  await page.getByRole("button", { name: "All lessons" }).click();
+  await expect(page.getByRole("button", { name: /Naked single/ }).last()).toContainText("1 completed");
+});
+
 test("the settings menu toggles back to the screen it opened from", async ({ page }) => {
   await page.getByRole("button", { name: "Settings and help" }).click();
   await expect(page.getByRole("heading", { name: "Settings & help" })).toBeVisible();

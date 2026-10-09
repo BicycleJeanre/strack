@@ -6,6 +6,19 @@ The home screen offers a deterministic daily choice in each difficulty band and 
 
 Every bundled puzzle works offline after the first successful production load. The status above the home title says whether the browser is online; it does not affect core play.
 
+## Technique training
+
+Open **Train** to follow a progressive curriculum from singles through intersections, subsets, and X-Wing. The first six lessons are available entirely offline: naked single, hidden single, locked candidates, naked pair, naked triple, and X-Wing. The roadmap also shows the planned path into fish, wings, coloring, chains, uniqueness, ALS, and forcing techniques as their local detectors are added.
+
+Every available lesson uses a genuine position derived from the bundled, documented puzzle catalogue and has four stages:
+
+1. **Learn** explains the pattern on a fully marked example.
+2. **Find** removes the answer markings and asks you to select the cells that make the pattern. **Show a clue** identifies those cells without revealing the candidate deduction.
+3. **Deduce** asks you to choose the candidate to place or eliminate. **Show the answer** is an explicit fallback and never changes a puzzle.
+4. **Complete** records the session and offers repetition or the next technique.
+
+Three independent completions with at least two-thirds independent accuracy mark a technique as mastered. Assisted completions still count as explored practice. Training progress saves to IndexedDB, is included in JSON backups, and synchronizes between signed-in devices with preferences.
+
 ## Enter digits, notes, and colours
 
 Select a cell, choose an entry mode, then choose a number:
@@ -13,7 +26,7 @@ Select a cell, choose an entry mode, then choose a number:
 - **Digit** enters an answer.
 - **Corner** stores short Snyder-style marks in the top-left corner, using the warm note colour. The marks stay on one line until they need to wrap.
 - **Centre** stores a cool-coloured candidate list in the middle. It also wraps only when necessary and is cleared when the cell receives an answer.
-- **Colour** applies one of six cell shades. Each coloured cell also has a bordered dot, so the state is not conveyed by colour alone.
+- **Colour** applies one of nine cell shades. Each coloured cell also has a bordered dot, so the state is not conveyed by colour alone.
 
 Turn on **Multi-select** to add or remove individual cells from the selection. On a keyboard, Shift + arrow extends the selection; Shift-, Ctrl-, or Command-click also adds or removes a cell. An entry or clear action applies to every selected editable cell.
 
@@ -97,11 +110,11 @@ Settings include system/light/dark theme, timer visibility, automatic candidates
 
 The top-right **Settings & help** button is a toggle. Select it again to close the menu and return to the screen you opened it from, including an active puzzle.
 
-STrack saves edits to IndexedDB on this device before attempting cloud synchronization. JSON backup import validates the file, adds missing game IDs, preserves existing games, and imports preferences. Reset actions are separately scoped to the current puzzle, completed history, or all local data.
+STrack saves edits and training progress to IndexedDB on this device before attempting cloud synchronization. JSON backup import validates the file, adds missing game IDs, preserves existing games, and imports preferences and training progress. Reset actions are separately scoped to the current puzzle, completed history, or all local data.
 
 ### Continue between a PC and phone
 
-Open **Settings & help → Cross-device sessions** and create an email/password account. Sign in with the same email on another device. STrack synchronizes each puzzle's entries, notes, colours, undo/redo state, elapsed time, completion state, active puzzle, and preferences through private owner-only Firestore documents.
+Open **Settings & help → Cross-device sessions** and create an email/password account. Sign in with the same email on another device. STrack synchronizes each puzzle's entries, notes, colours, undo/redo state, elapsed time, completion state, active puzzle, preferences, and technique-training progress through private owner-only Firestore documents.
 
 Each edit remains usable offline. When connectivity returns, each puzzle reconciles by its newest saved version; a newer cloud puzzle is never overwritten by an older device copy. A sync status appears in the desktop header and account panel. Signing out does not delete device data. Local reset actions do not delete cloud copies.
 

@@ -62,11 +62,24 @@ export interface Preferences {
   showMistakes: boolean;
 }
 
+export type TrainingTechniqueId = "naked-single" | "hidden-single" | "locked-candidates" | "naked-pair" | "naked-triple" | "x-wing";
+
+export interface TrainingTechniqueProgress {
+  attempts: number;
+  correct: number;
+  completed: number;
+  mastered: boolean;
+  lastPracticedAt: number;
+}
+
+export type TrainingProgress = Partial<Record<TrainingTechniqueId, TrainingTechniqueProgress>>;
+
 export interface AppData {
   version: 1;
   catalogueVersion: string;
   settingsUpdatedAt: number;
   preferences: Preferences;
+  trainingProgress: TrainingProgress;
   games: Record<string, Game>;
   deletedGames: Record<string, number>;
   activeGameId: string | null;

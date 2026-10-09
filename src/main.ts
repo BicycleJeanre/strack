@@ -1,5 +1,6 @@
 import "./style.css";
 import catalogueJson from "./data/puzzles.json";
+import { CloudSync, cloudConfigured, sendReset, signInAccount, signOutAccount, watchAuth, type CloudUser } from "./cloud.ts";
 import { applyColour, applyHint, clearSelected, createGame, enterDigit, moveSelection, redo, revealCell, selectCell, setMode, undo } from "./game.ts";
 import { candidateList, cellLabel, findHint, normalizePuzzle, peers, validatePuzzle } from "./sudoku.ts";
 import { Store } from "./store.ts";
@@ -18,6 +19,11 @@ let maxRating = "";
 let multiSelect = false;
 let activeHint: Hint | null = null;
 let timerSaveCounter = 0;
+let cloudUser: CloudUser | null = null;
+const cloud = new CloudSync(store, () => {
+  document.querySelectorAll<HTMLElement>("[data-cloud-status]").forEach((element) => { element.textContent = cloud.status(); });
+  if (["home", "library", "settings"].includes(view) && app.querySelector("main")) render();
+});
 
 const escapeHtml = (value: unknown) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]!);
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -37,7 +43,7 @@ function shell(content: string, title: string) {
   app.innerHTML = `
     <header class="app-header">
       <button class="brand" data-nav="home" aria-label="STrack home"><span class="brand-grid" aria-hidden="true">S</span><span>STrack</span></button>
-      <nav aria-label="Main navigation">
+      <span class="cloud-state" data-cloud-status>${cloud.status()}</span><nav aria-label="Main navigation">
         <button data-nav="library" class="${view === "library" ? "active" : ""}">Puzzles</button>
         <button data-nav="import" class="${view === "import" ? "active" : ""}">Open</button>
         <button data-nav="settings" class="${view === "settings" ? "active" : ""}" aria-label="Settings and help">•••</button>
@@ -82,7 +88,7 @@ function renderHome() {
   shell(`
     <section class="hero card">
       <div><span class="eyebrow">Sudoku, thoughtfully</span><h2>${active ? "Your grid is waiting." : "A quieter way to solve."}</h2>
-      <p>Transparent difficulty, explanatory hints, and every puzzle available without a connection.</p></div>
+      <p>Transparent difficulty, explanatory hints, and every puzzle available without a connection.${cloudUser ? " Your signed-in progress follows you between devices." : " Sign in from Settings to continue on another device."}</p></div>
       ${active ? `<button class="primary" id="resume">${active.completedAt ? "Review puzzle" : "Resume puzzle"}<small>${escapeHtml(active.puzzle.difficulty)} · ${rating(active.puzzle)} · ${formatTime(active.elapsed)}</small></button>` : `<button class="primary" id="quick-start">Start an Easy puzzle<small>Chosen from the offline collection</small></button>`}
     </section>
     <section aria-labelledby="choose-title"><div class="section-heading"><div><span class="eyebrow">New puzzle</span><h2 id="choose-title">Choose your pace</h2></div><button class="text-button" data-nav="library">See all 80 →</button></div>
@@ -97,7 +103,7 @@ function renderHome() {
   app.querySelector("#resume")?.addEventListener("click", () => { view = "player"; render(); });
   app.querySelector("#quick-start")?.addEventListener("click", () => startPuzzle(pickPuzzle("Easy")));
   app.querySelectorAll<HTMLElement>("[data-band]").forEach((button) => button.addEventListener("click", () => startPuzzle(pickPuzzle(button.dataset.band as Difficulty))));
-  app.querySelectorAll<HTMLElement>("[data-game]").forEach((button) => button.addEventListener("click", async () => { store.data.activeGameId = button.dataset.game!; await store.save(); view = "player"; render(); }));
+  app.querySelectorAll<HTMLElement>("[data-game]").forEach((button) => button.addEventListener("click", async () => { store.data.activeGameId = button.dataset.game!; await store.saveSettings(); view = "player"; render(); }));
 }
 
 function pickPuzzle(band: Difficulty): Puzzle {
@@ -258,13 +264,36 @@ function renderSettings() {
   const preferences = store.data.preferences;
   shell(`
     <section class="settings-grid">
+      <div class="card settings-card account-card"><span class="eyebrow">Cross-device sessions</span><h2>${cloudUser ? "Progress sync is on" : "Continue on another device"}</h2>
+        ${!cloudConfigured ? `<p>Cloud sessions are not configured in this build. Device-only play remains fully available.</p>` : cloudUser ? `<p>Signed in as <strong>${escapeHtml(cloudUser.email || "your account")}</strong>. Puzzle edits, notation, colours, elapsed time, completion history, and preferences sync through your private Firestore account.</p><p class="sync-message ${cloud.error ? "error" : ""}" data-cloud-status>${escapeHtml(cloud.status())}</p>${cloud.error ? `<p class="error">${escapeHtml(cloud.error)}</p><button id="retry-sync" class="secondary">Retry sync</button>` : ""}<button id="sign-out" class="secondary">Sign out on this device</button>` : `<p>Create an account or sign in with the same email on your PC and phone. Offline edits remain on each device and reconcile by the newest saved puzzle version when a connection returns.</p><form id="account-form"><label>Email<input id="account-email" type="email" autocomplete="email" required /></label><label>Password<input id="account-password" type="password" autocomplete="current-password" minlength="6" required /></label><div class="actions"><button class="primary compact" type="submit">Sign in</button><button class="secondary compact" type="submit" data-create="true">Create account</button></div><button class="text-button" type="button" id="reset-password">Send password reset email</button><p id="account-feedback" role="status"></p></form>`}
+      </div>
       <div class="card settings-card"><span class="eyebrow">Appearance</span><h2>Make the desk yours</h2><label>Theme<select id="theme">${(["system","light","dark"] as Theme[]).map((theme) => `<option value="${theme}" ${theme === preferences.theme ? "selected" : ""}>${theme[0].toUpperCase() + theme.slice(1)}</option>`).join("")}</select></label>${toggle("showTimer", "Show timer", "Keep time available without turning it into a score.", preferences.showTimer)}${toggle("highlightPeers", "Highlight peers", "Shade cells sharing a row, column, or box.", preferences.highlightPeers)}${toggle("highlightMatches", "Highlight matching digits", "Show every copy of the selected digit.", preferences.highlightMatches)}</div>
       <div class="card settings-card"><span class="eyebrow">Assistance</span><h2>Notation and checks</h2>${toggle("autoCandidates", "Automatic candidates", "Show canonical candidates in empty cells with no notes.", preferences.autoCandidates)}${toggle("cleanCandidates", "Clean notes after entry", "Remove a placed digit from peer notes.", preferences.cleanCandidates)}${toggle("showMistakes", "Show conflicts with solution", "Add a symbol and outline; never rely on colour alone.", preferences.showMistakes)}</div>
-      <div class="card settings-card"><span class="eyebrow">Backup</span><h2>Your device data</h2><p>Browser storage can be cleared or evicted. A JSON export is the backup mechanism in version 1.</p><div class="stack-actions"><button id="export" class="secondary">Download JSON backup</button><label class="file-button">Import JSON backup<input type="file" id="backup-file" accept="application/json" /></label><button id="reset-current" class="danger-quiet">Reset current puzzle</button><button id="reset-history" class="danger-quiet">Clear completed history</button><button id="reset-all" class="danger-quiet">Erase all local STrack data</button></div></div>
+      <div class="card settings-card"><span class="eyebrow">Backup</span><h2>Your device data</h2><p>Browser storage can be cleared or evicted. Cloud sync keeps signed-in sessions current across devices; JSON export remains the independent backup and the only backup for device-only play.</p><div class="stack-actions"><button id="export" class="secondary">Download JSON backup</button><label class="file-button">Import JSON backup<input type="file" id="backup-file" accept="application/json" /></label><button id="reset-current" class="danger-quiet">Reset current puzzle</button><button id="reset-history" class="danger-quiet">Clear completed history</button><button id="reset-all" class="danger-quiet">Erase all local STrack data</button></div><p class="storage-note">Local reset actions do not delete signed-in cloud copies; sign out first if you want a blank device-only workspace.</p></div>
       <div class="card settings-card"><span class="eyebrow">Help</span><h2>How STrack works</h2><button id="open-help" class="secondary">Open user guide</button><p class="storage-note"><strong>${navigator.onLine ? "Online" : "Offline"}.</strong> The app shell, catalogue, help, preferences, solver, and saved progress work without a connection after the first production load.</p></div>
     </section>`, "Settings & help");
-  app.querySelector<HTMLSelectElement>("#theme")!.addEventListener("change", async (event) => { preferences.theme = (event.target as HTMLSelectElement).value as Theme; applyTheme(); await store.save(); });
-  app.querySelectorAll<HTMLInputElement>("[data-preference]").forEach((input) => input.addEventListener("change", async () => { (preferences as unknown as Record<string, boolean>)[input.dataset.preference!] = input.checked; await store.save(); }));
+  app.querySelector<HTMLSelectElement>("#theme")!.addEventListener("change", async (event) => { preferences.theme = (event.target as HTMLSelectElement).value as Theme; applyTheme(); await store.saveSettings(); });
+  app.querySelectorAll<HTMLInputElement>("[data-preference]").forEach((input) => input.addEventListener("change", async () => { (preferences as unknown as Record<string, boolean>)[input.dataset.preference!] = input.checked; await store.saveSettings(); }));
+  app.querySelector("#sign-out")?.addEventListener("click", async () => { await signOutAccount(); notify("Signed out; device data remains available"); });
+  app.querySelector("#retry-sync")?.addEventListener("click", () => cloud.uploadLocal());
+  const accountForm = app.querySelector<HTMLFormElement>("#account-form");
+  accountForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const feedback = app.querySelector<HTMLParagraphElement>("#account-feedback")!;
+    const submitter = (event as SubmitEvent).submitter as HTMLElement | null;
+    feedback.textContent = submitter?.dataset.create ? "Creating your private sync account…" : "Signing in…";
+    try {
+      await signInAccount(app.querySelector<HTMLInputElement>("#account-email")!.value.trim(), app.querySelector<HTMLInputElement>("#account-password")!.value, submitter?.dataset.create === "true");
+      feedback.textContent = "Connected. Merging this device with your cloud sessions…";
+    } catch (error) { feedback.textContent = accountError(error); feedback.className = "error"; }
+  });
+  app.querySelector("#reset-password")?.addEventListener("click", async () => {
+    const email = app.querySelector<HTMLInputElement>("#account-email")!.value.trim();
+    const feedback = app.querySelector<HTMLParagraphElement>("#account-feedback")!;
+    if (!email) return void (feedback.textContent = "Enter your email address first.");
+    try { await sendReset(email); feedback.textContent = "Password reset email sent."; }
+    catch (error) { feedback.textContent = accountError(error); feedback.className = "error"; }
+  });
   app.querySelector("#open-help")!.addEventListener("click", showHelp);
   app.querySelector("#export")!.addEventListener("click", () => {
     const blob = new Blob([store.exportJson()], { type: "application/json" });
@@ -296,7 +325,17 @@ function showDialog(content: string, closeLabel = "Done") {
 }
 
 function showHelp() {
-  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell or turn on Multi-select. Digit writes an answer; Corner is for Snyder marks; Centre is for candidate lists. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Read the explanation, then choose Apply deduction. Revealing a solution value is a separate fallback action.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress and preferences use IndexedDB on this device. STrack has no analytics, ads, account, or required network calls. Export JSON regularly because browser storage can be cleared or evicted.</p>`, "Got it");
+  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell or turn on Multi-select. Digit writes an answer; Corner is for Snyder marks; Centre is for candidate lists. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Read the explanation, then choose Apply deduction. Revealing a solution value is a separate fallback action.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+}
+
+function accountError(error: unknown) {
+  const code = typeof error === "object" && error && "code" in error ? String((error as { code: unknown }).code) : "";
+  if (code.includes("invalid-credential")) return "Email or password is incorrect.";
+  if (code.includes("email-already-in-use")) return "That email already has an account. Choose Sign in.";
+  if (code.includes("weak-password")) return "Use a password with at least six characters.";
+  if (code.includes("invalid-email")) return "Enter a valid email address.";
+  if (code.includes("too-many-requests")) return "Too many attempts. Wait a moment and try again.";
+  return "Cloud access failed. Your device data is safe; check the connection and try again.";
 }
 
 function render() {
@@ -339,9 +378,16 @@ addEventListener("offline", render);
 
 async function boot() {
   await store.load();
+  store.onGameSaved = (game) => { void cloud.syncGame(game); };
+  store.onSettingsSaved = () => { void cloud.syncSettings(); };
   applyTheme();
   if (new URLSearchParams(location.search).has("p")) view = "import";
   render();
+  watchAuth(async (user) => {
+    cloudUser = user;
+    await cloud.setUser(user);
+    render();
+  });
   if ("serviceWorker" in navigator && import.meta.env.PROD) {
     try { await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`); }
     catch { notify("Offline installation will retry on the next visit."); }

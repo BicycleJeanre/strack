@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    function validId(value) {
+      return value is string && value.size() > 0 && value.size() <= 180;
+    }
+    function validGame(id) {
+      let d = request.resource.data;
+      return d.keys().hasAll(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
+        && d.keys().hasOnly(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
+        && d.version == 1
+        && d.id == id && validId(id)
+        && d.puzzle is map && validId(d.puzzle.id)
+        && d.puzzle.givens is string && d.puzzle.givens.size() == 81
+        && d.puzzle.solution is string && d.puzzle.solution.size() == 81
+        && d.values is list && d.values.size() == 81
+        && d.corner is list && d.corner.size() == 81
+        && d.centre is list && d.centre.size() == 81
+        && d.colours is list && d.colours.size() == 81
+        && d.eliminated is list && d.eliminated.size() == 81
+        && d.selected is list && d.selected.size() > 0 && d.selected.size() <= 81
+        && d.anchor is int && d.anchor >= 0 && d.anchor < 81
+        && d.mode in ['normal', 'corner', 'centre', 'colour']
+        && d.history is list && d.history.size() <= 80
+        && d.future is list && d.future.size() <= 80
+        && d.elapsed is int && d.elapsed >= 0 && d.elapsed <= 315576000
+        && d.startedAt is number && d.startedAt > 0
+        && d.updatedAt is number && d.updatedAt >= d.startedAt
+        && (d.completedAt == null || (d.completedAt is number && d.completedAt >= d.startedAt))
+        && d.paused is bool
+        && d.hintStage in ['none', 'preview']
+        && (d.hintId == null || (d.hintId is string && d.hintId.size() <= 240));
+    }
+    function validSettings() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['version', 'preferences', 'activeGameId', 'updatedAt'])
+        && d.keys().hasOnly(['version', 'preferences', 'activeGameId', 'updatedAt'])
+        && d.version == 1
+        && d.preferences is map
+        && d.preferences.keys().hasAll(['theme', 'showTimer', 'autoCandidates', 'cleanCandidates', 'highlightPeers', 'highlightMatches', 'showMistakes'])
+        && d.preferences.keys().hasOnly(['theme', 'showTimer', 'autoCandidates', 'cleanCandidates', 'highlightPeers', 'highlightMatches', 'showMistakes'])
+        && d.preferences.theme in ['system', 'light', 'dark']
+        && d.preferences.showTimer is bool
+        && d.preferences.autoCandidates is bool
+        && d.preferences.cleanCandidates is bool
+        && d.preferences.highlightPeers is bool
+        && d.preferences.highlightMatches is bool
+        && d.preferences.showMistakes is bool
+        && (d.activeGameId == null || validId(d.activeGameId))
+        && d.updatedAt is number && d.updatedAt > 0;
+    }
+    match /users/{uid}/games/{id} {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && validGame(id);
+      allow delete: if false;
+    }
+    match /users/{uid}/meta/settings {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && validSettings();
+      allow delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

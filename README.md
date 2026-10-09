@@ -2,7 +2,7 @@
 
 STrack is an offline-first Sudoku PWA in the FTrack/GTrack product family. It combines a focused responsive puzzle desk with transparent Sudoku Explainer ratings, separate notation systems, progressive logical hints, and device-local privacy.
 
-The production build is designed for `https://bicyclejeanre.github.io/strack/` and has no runtime server, account, analytics, ad, or third-party puzzle API dependency.
+The production build is designed for `https://bicyclejeanre.github.io/strack/`. Core play has no runtime server or third-party puzzle API dependency; optional Firebase accounts privately synchronize puzzle sessions between devices. There are no analytics or ads.
 
 ## Release 1
 
@@ -13,6 +13,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/` a
 - Progressive hints that identify evidence, name and explain the technique, then wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
 - Automatic candidates, peer and matching-digit highlights, candidate cleanup, optional mistake cues, pause, optional timer, and light/dark/system themes.
 - IndexedDB save/resume, recent completions, non-destructive JSON backup import, and scoped reset controls.
+- Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device progress/preferences.
 - Local puzzle import with shape, conflict, solution, and uniqueness checks plus URL-only sharing.
 - Installable manifest and versioned app-shell cache. The app shell, help, solver, current progress, preferences, and full bundled catalogue relaunch offline.
 - Responsive phone, desktop, portrait, and landscape layouts with visible focus, semantic names, reduced-motion support, and colour-independent status cues.
@@ -56,9 +57,11 @@ Before relying on a release on a real phone, smoke-test installation from HTTPS,
 
 `.github/workflows/deploy.yml` is manual. It builds with `BASE_PATH=/strack/`, uploads `dist/`, and deploys through GitHub Pages. In repository settings, select **GitHub Actions** as the Pages source.
 
+The deployment requires the four public Firebase web identifiers as Actions secrets: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Firestore Rules keep every `users/{uid}` game and settings document private to that authenticated user. `npm run test:rules` validates isolation, and `npm run test:cloud` proves a puzzle started in one browser context resumes in another through the local Auth/Firestore emulators.
+
 ## Local data and privacy
 
-STrack stores preferences, active boards, elapsed time, notation, colours, undo history, and completions in IndexedDB. Imports merge only missing game IDs and never replace an existing game. Browser storage can be cleared or evicted; a downloaded JSON export is the version 1 backup mechanism.
+STrack always stores preferences, active boards, elapsed time, notation, colours, undo history, and completions in IndexedDB first. Signed-in users also synchronize that state into private Firestore documents. Imports merge only missing game IDs and never replace an existing game. Browser storage can be cleared or evicted; a downloaded JSON export remains the independent backup and the only backup for device-only play.
 
 Share links contain the 81-character givens in the URL and do not upload a puzzle. Imported puzzles are solved and validated locally, labelled `Unrated`, and never assigned a fabricated SE value.
 

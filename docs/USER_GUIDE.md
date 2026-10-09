@@ -65,12 +65,18 @@ Validation happens on the device. A copied share link stores only the givens in 
 
 Settings include system/light/dark theme, timer visibility, automatic candidates, note cleanup, peer highlights, matching-digit highlights, and optional mistake cues. Mistakes receive an outline and `!` marker in addition to colour.
 
-STrack saves edits to IndexedDB on this device. JSON backup import validates the file, adds missing game IDs, preserves existing games, and imports preferences. Reset actions are separately scoped to the current puzzle, completed history, or all local data.
+STrack saves edits to IndexedDB on this device before attempting cloud synchronization. JSON backup import validates the file, adds missing game IDs, preserves existing games, and imports preferences. Reset actions are separately scoped to the current puzzle, completed history, or all local data.
 
-Browser storage can be cleared or evicted by the browser or operating system. Download JSON backups periodically; version 1 has no cloud account or cross-device sync.
+### Continue between a PC and phone
+
+Open **Settings & help → Cross-device sessions** and create an email/password account. Sign in with the same email on another device. STrack synchronizes each puzzle's entries, notes, colours, undo/redo state, elapsed time, completion state, active puzzle, and preferences through private owner-only Firestore documents.
+
+Each edit remains usable offline. When connectivity returns, each puzzle reconciles by its newest saved version; a newer cloud puzzle is never overwritten by an older device copy. A sync status appears in the desktop header and account panel. Signing out does not delete device data. Local reset actions do not delete cloud copies.
+
+Browser storage can be cleared or evicted by the browser or operating system. Cloud sync is continuity, not an archival backup. Download JSON backups periodically, especially before clearing browser data.
 
 ## Install and use offline
 
-On a supported browser, install STrack from the browser's install or Add to Home Screen action after the first online production load. The versioned service worker caches the app shell, styles, help content, solver, and 80-puzzle catalogue. Current progress and preferences remain in IndexedDB.
+On a supported browser, install STrack from the browser's install or Add to Home Screen action after the first online production load. The versioned service worker caches the app shell, styles, help content, solver, and 80-puzzle catalogue. Current progress and preferences remain in IndexedDB; signed-in sessions synchronize when a connection is available.
 
 Development mode does not register a service worker; use the production build or the published HTTPS site for installation checks.

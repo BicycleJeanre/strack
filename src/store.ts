@@ -17,6 +17,7 @@ export function emptyData(): AppData {
   return {
     version: 1,
     catalogueVersion: CATALOGUE_VERSION,
+    settingsUpdatedAt: 0,
     preferences: { ...DEFAULT_PREFERENCES },
     games: {},
     activeGameId: null,
@@ -31,6 +32,8 @@ const database = openDB("strack-v1", 1, {
 
 export class Store {
   data: AppData = emptyData();
+  onGameSaved: ((game: Game) => void) | null = null;
+  onSettingsSaved: (() => void) | null = null;
 
   async load() {
     const saved = await (await database).get("state", "app");
@@ -38,6 +41,7 @@ export class Store {
       this.data = {
         ...emptyData(),
         ...saved,
+        settingsUpdatedAt: saved.settingsUpdatedAt || 0,
         preferences: { ...DEFAULT_PREFERENCES, ...saved.preferences },
       };
     }
@@ -53,14 +57,44 @@ export class Store {
 
   async putGame(game: Game, active = true) {
     this.data.games[game.id] = game;
-    if (active) this.data.activeGameId = game.id;
+    if (active && this.data.activeGameId !== game.id) {
+      this.data.activeGameId = game.id;
+      this.data.settingsUpdatedAt = Date.now();
+      this.onSettingsSaved?.();
+    }
     await this.save();
+    this.onGameSaved?.(game);
+  }
+
+  async saveSettings() {
+    this.data.settingsUpdatedAt = Date.now();
+    await this.save();
+    this.onSettingsSaved?.();
+  }
+
+  async mergeCloudGame(game: Game) {
+    const local = this.data.games[game.id];
+    if (local && local.updatedAt >= game.updatedAt) return false;
+    this.data.games[game.id] = game;
+    await this.save();
+    return true;
+  }
+
+  async mergeCloudSettings(settings: { preferences: Preferences; activeGameId: string | null; updatedAt: number }) {
+    if (this.data.settingsUpdatedAt >= settings.updatedAt) return false;
+    this.data.preferences = { ...DEFAULT_PREFERENCES, ...settings.preferences };
+    this.data.activeGameId = settings.activeGameId;
+    this.data.settingsUpdatedAt = settings.updatedAt;
+    await this.save();
+    return true;
   }
 
   async removeGame(id: string) {
     delete this.data.games[id];
     if (this.data.activeGameId === id) this.data.activeGameId = null;
+    this.data.settingsUpdatedAt = Date.now();
     await this.save();
+    this.onSettingsSaved?.();
   }
 
   exportJson(): string {
@@ -86,7 +120,7 @@ export class Store {
       } else throw new Error(`Game ${id} is incomplete; nothing was imported.`);
     }
     this.data.preferences = { ...this.data.preferences, ...parsed.data.preferences };
-    await this.save();
+    await this.saveSettings();
     return { added, skipped };
   }
 
@@ -97,6 +131,6 @@ export class Store {
     }
     if (scope === "all") this.data = emptyData();
     if (this.data.activeGameId && !this.data.games[this.data.activeGameId]) this.data.activeGameId = null;
-    await this.save();
+    await this.saveSettings();
   }
 }

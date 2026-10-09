@@ -56,6 +56,7 @@ export interface Preferences {
 export interface AppData {
   version: 1;
   catalogueVersion: string;
+  settingsUpdatedAt: number;
   preferences: Preferences;
   games: Record<string, Game>;
   activeGameId: string | null;

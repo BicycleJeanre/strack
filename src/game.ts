@@ -47,7 +47,7 @@ export function createGame(puzzle: Puzzle, now = Date.now()): Game {
 
 function startChange(game: Game) {
   game.history.push(snapshot(game));
-  if (game.history.length > 200) game.history.shift();
+  if (game.history.length > 80) game.history.shift();
   game.future = [];
   game.hintStage = "none";
   game.hintId = null;

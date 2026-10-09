@@ -64,6 +64,7 @@ a { color: var(--accent); }
 .brand { display: flex; align-items: center; gap: 9px; padding: 0; border: 0; background: transparent; font-size: 19px; font-weight: 800; letter-spacing: -.6px; }
 .brand-grid { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 15px; }
 .app-header nav { display: flex; align-self: stretch; gap: 5px; }
+.cloud-state { margin-left: auto; padding: 4px 9px; border: 1px solid var(--border); border-radius: 12px; color: var(--muted); font-size: 9px; font-weight: 800; }
 .app-header nav button { min-width: 54px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; }
 .app-header nav button.active, .app-header nav button:hover { border-bottom-color: var(--accent); color: var(--text); }
 main { width: min(1180px, 100%); min-height: calc(100dvh - 64px); margin: 0 auto; padding: 34px 22px calc(80px + env(safe-area-inset-bottom)); }
@@ -185,6 +186,12 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .explainer ol { padding-left: 20px; }.explainer li { margin-bottom: 9px; }
 .checking { color: var(--accent); }.error { color: var(--danger); }.success { margin: 12px 0; padding: 13px; border: 1px solid var(--success); border-radius: 8px; background: color-mix(in srgb, var(--success) 7%, transparent); }.success p { margin: 3px 0 10px; }.actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .settings-card > label:not(.toggle) { display: block; margin: 16px 0; }
+.account-card { grid-column: 1 / -1; }
+.account-card form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.account-card form .actions, .account-card form .text-button, .account-card form #account-feedback { grid-column: 1 / -1; }
+.account-card form .actions > button { flex: 1; }
+.account-card > .secondary + .secondary { margin-left: 8px; }
+.sync-message { color: var(--success); font-weight: 800; }
 .toggle { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 68px; border-top: 1px solid var(--border); }
 .toggle strong, .toggle small { display: block; }.toggle strong { color: var(--text); font-size: 13px; }.toggle small { max-width: 320px; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .toggle input { width: 44px; height: 24px; flex: 0 0 auto; margin: 0; accent-color: var(--accent); }
@@ -208,7 +215,7 @@ dialog::backdrop { background: #020607b8; backdrop-filter: blur(4px); }
   .number-pad button { min-height: 48px; }
 }
 @media (max-width: 560px) {
-  .app-header { padding-left: 14px; padding-right: 8px; }.app-header nav button { min-width: 48px; padding: 0 7px; }
+  .app-header { padding-left: 14px; padding-right: 8px; }.app-header nav button { min-width: 48px; padding: 0 7px; }.cloud-state { display: none; }
   .page-heading { margin-bottom: 18px; }.page-heading h1 { font-size: 27px; }
   .hero { grid-template-columns: 1fr; min-height: auto; margin-bottom: 30px; padding: 25px 20px; }.hero .primary { min-height: 58px; }
   .band-grid { gap: 8px; }.band-card { min-height: 120px; padding: 15px; }.band-card strong { margin-top: 22px; }
@@ -221,6 +228,7 @@ dialog::backdrop { background: #020607b8; backdrop-filter: blur(4px); }
   .number-pad { grid-template-columns: repeat(5, 1fr); }.number-pad .clear-key { grid-column: 5; grid-row: 1 / span 2; }.number-pad button { min-height: 49px; }
   .cell-value { font-size: clamp(18px, 7vw, 32px); }.corner-marks { inset: 1px; }.colour-cue { width: 6px; height: 6px; right: 2px; bottom: 2px; }
   .control-help { display: none; }.split-layout, .settings-grid { grid-template-columns: 1fr; }
+  .account-card { grid-column: auto; }.account-card form { grid-template-columns: 1fr; }.account-card form .actions, .account-card form .text-button, .account-card form #account-feedback { grid-column: auto; }
   .dialog-content dl { grid-template-columns: 1fr; }.dialog-content dt:not(:first-child) { margin-top: 7px; }
 }
 @media (orientation: landscape) and (max-height: 620px) and (min-width: 640px) {

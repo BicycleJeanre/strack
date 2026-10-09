@@ -57,6 +57,42 @@ test("settings persist theme and help explains notation, ratings, offline use an
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
+test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page }) => {
+  const boardColours = async () => {
+    const board = page.getByRole("grid", { name: "Sudoku board" });
+    await expect(board).toBeVisible();
+    return page.evaluate(() => {
+      const given = document.querySelector<HTMLElement>(".sudoku-cell.given")!;
+      const empty = document.querySelector<HTMLElement>(".sudoku-cell:not(.given):not(.selected):not(.peer):not(.match)")!;
+      return {
+        board: getComputedStyle(document.querySelector<HTMLElement>(".sudoku-board")!).backgroundColor,
+        given: getComputedStyle(given).backgroundColor,
+        empty: getComputedStyle(empty).backgroundColor,
+        givenText: getComputedStyle(given).color,
+      };
+    });
+  };
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Settings and help" }).click();
+  await page.getByLabel("Theme").selectOption("dark");
+  await page.getByRole("button", { name: "STrack home" }).click();
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const dark = await boardColours();
+
+  await page.getByRole("button", { name: "Settings and help" }).click();
+  await page.getByLabel("Theme").selectOption("light");
+  await page.getByRole("button", { name: "STrack home" }).click();
+  await page.getByRole("button", { name: /Resume puzzle/ }).click();
+  const light = await boardColours();
+
+  expect(dark).not.toEqual(light);
+  expect(dark.empty).toBe("rgb(19, 27, 31)");
+  expect(light.empty).toBe("rgb(237, 243, 244)");
+  expect(dark.given).not.toBe(light.given);
+  expect(dark.givenText).not.toBe(light.givenText);
+});
+
 test("import validates uniqueness and creates a client-side share link", async ({ page }) => {
   await page.getByRole("button", { name: "Open" }).click();
   await page.getByLabel("81-character puzzle").fill("530070000600195000098000060800060003400803001700020006060000280000419005000080079");
@@ -65,7 +101,7 @@ test("import validates uniqueness and creates a client-side share link", async (
   await page.evaluate(() => {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (value: string) => { sessionStorage.setItem("copied-link", value); return Promise.resolve(); } } });
   });
-  await page.getByRole("button", { name: "Copy share link" }).click();
+  await page.getByRole("button", { name: "Copy share link" }).dispatchEvent("click");
   const clipboard = await page.evaluate(() => sessionStorage.getItem("copied-link") || "");
   expect(new URL(clipboard).searchParams.get("p")).toBe("530070000600195000098000060800060003400803001700020006060000280000419005000080079");
 });

@@ -50,10 +50,47 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(empty.nth(1).locator(".corner-marks")).toHaveCount(0);
   await page.getByRole("button", { name: "Colour" }).click();
-  await page.getByRole("button", { name: "Apply cyan colour" }).click();
-  await expect(empty.nth(0)).toHaveClass(/colour-cyan/);
+  await page.getByRole("button", { name: "Toggle cyan cell colour" }).click();
+  await page.getByRole("button", { name: "Toggle amber cell colour" }).click();
+  await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(2);
+  await expect(empty.nth(0)).toHaveAttribute("aria-label", /colours cyan, amber/);
   await page.keyboard.press("Shift+ArrowRight");
   expect(await page.locator(".sudoku-cell.selected").count()).toBeGreaterThan(1);
+});
+
+test("nine colours subdivide cells and coloured lines can be drawn, recoloured and undone", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const cells = page.locator(".sudoku-cell");
+  const empty = page.locator(".sudoku-cell:not(.given)");
+  await empty.nth(0).click();
+  await page.getByRole("button", { name: "Colour" }).click();
+  await expect(page.getByRole("group", { name: "Entry mode" })).toContainText("Lines");
+  await expect(page.locator("[data-colour]")).toHaveCount(9);
+  for (const colour of ["cyan", "amber", "indigo"]) await page.getByRole("button", { name: `Toggle ${colour} cell colour` }).click();
+  await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(3);
+  await expect(empty.nth(0).locator(".colour-cues i")).toHaveCount(3);
+  await page.getByRole("button", { name: "Toggle amber cell colour" }).click();
+  await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Lines" }).click();
+  await page.getByRole("button", { name: "Use rose line colour" }).click();
+  const from = (await cells.nth(0).boundingBox())!;
+  const to = (await cells.nth(10).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 4 });
+  await page.mouse.up();
+  const line = page.locator(".annotation-line:not(.preview)");
+  await expect(line).toHaveCount(1);
+  await expect(line).toHaveClass(/colour-rose/);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(line).toHaveCount(0);
+  await page.getByRole("button", { name: "Redo" }).click();
+  await expect(line).toHaveCount(1);
+
+  await cells.nth(0).click();
+  await page.keyboard.press("Shift+ArrowRight");
+  await expect(page.getByRole("button", { name: "Connect selected cells" })).toBeEnabled();
 });
 
 test("all candidates replace corner notes with centre notes as one undoable action", async ({ page }) => {

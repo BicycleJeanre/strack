@@ -8,7 +8,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 
 - 80 public-domain, uniquely solvable puzzles: 20 each in Easy, Medium, Hard, and Diabolical.
 - Exact `SE` ratings, friendly bands, stable source IDs, catalogue version, and provenance visible for every bundled puzzle.
-- Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, six cell colours, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
+- Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, nine stackable cell colours, coloured lines between cells, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
 - A compact mobile player keeps the board and full 3×3 number keypad in the initial portrait viewport at supported phone sizes.
 - Progressive hints that identify evidence, name and explain the technique, optionally show the exact answer, keep dismissible per-puzzle history, and wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.

@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import type { AppData, Game, Preferences } from "./types.ts";
+import type { AnnotationColour, AppData, BoardSnapshot, ColourLine, Game, Preferences } from "./types.ts";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
@@ -25,7 +25,42 @@ export function emptyData(): AppData {
   };
 }
 
+const annotationColours = new Set<AnnotationColour>(["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"]);
+
+function normalizeColours(value: unknown): AnnotationColour[][] {
+  const items = Array.isArray(value) ? value : [];
+  return Array.from({ length: 81 }, (_, cell) => {
+    const raw = items[cell];
+    const colours = Array.isArray(raw) ? raw : typeof raw === "string" && raw ? [raw] : [];
+    return [...new Set(colours.filter((colour): colour is AnnotationColour => typeof colour === "string" && annotationColours.has(colour as AnnotationColour)))].slice(0, 9);
+  });
+}
+
+function normalizeLines(value: unknown): ColourLine[] {
+  if (!Array.isArray(value)) return [];
+  const lines: ColourLine[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const { from, to, colour } = item as Partial<ColourLine>;
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from! < 0 || from! > 80 || to! < 0 || to! > 80 || from === to || !annotationColours.has(colour as AnnotationColour)) continue;
+    const line = { from: Math.min(from!, to!), to: Math.max(from!, to!), colour: colour as AnnotationColour };
+    const duplicate = lines.findIndex((current) => current.from === line.from && current.to === line.to);
+    if (duplicate >= 0) lines[duplicate] = line;
+    else if (lines.length < 160) lines.push(line);
+  }
+  return lines;
+}
+
+function normalizeSnapshot(snapshot: BoardSnapshot): BoardSnapshot {
+  snapshot.colours = normalizeColours(snapshot.colours);
+  snapshot.lines = normalizeLines(snapshot.lines);
+  return snapshot;
+}
+
 function normalizeGame(game: Game): Game {
+  normalizeSnapshot(game);
+  game.history = Array.isArray(game.history) ? game.history.map((item) => normalizeSnapshot(item)) : [];
+  game.future = Array.isArray(game.future) ? game.future.map((item) => normalizeSnapshot(item)) : [];
   game.hintHistory = Array.isArray(game.hintHistory) ? game.hintHistory : [];
   for (let cell = 0; cell < game.values.length; cell++) if (game.values[cell]) {
     game.corner[cell] = [];

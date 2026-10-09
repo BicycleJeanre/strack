@@ -12,10 +12,14 @@ test("IndexedDB persists active progress and backup import preserves existing ID
   await first.load();
   const game = createGame(puzzle, 100);
   game.values[0] = "1";
+  (game as unknown as { colours: string[] }).colours = ["cyan", ...Array(80).fill("")];
+  delete (game as unknown as { lines?: unknown }).lines;
   await first.putGame(game);
   const second = new Store();
   await second.load();
   assert.equal(second.activeGame()?.values[0], "1");
+  assert.deepEqual(second.activeGame()?.colours[0], ["cyan"], "legacy single colours migrate to colour arrays");
+  assert.deepEqual(second.activeGame()?.lines, [], "legacy games gain an empty line collection");
   const result = await second.importJson(first.exportJson());
   assert.deepEqual(result, { added: 0, skipped: 1 });
   await second.clear("all");
@@ -67,4 +71,17 @@ test("deleted puzzles stay deleted when a stale cloud game arrives", async () =>
   }), true);
   assert.equal(otherDevice.activeGame(), null);
   assert.equal(otherDevice.data.games[game.id], undefined);
+});
+
+test("cloud encoding preserves multiple colours and line annotations without nested arrays", async () => {
+  const { decodeCloudGame, encodeCloudGame } = await import("../src/cloud.ts");
+  const game = createGame(puzzle, 700);
+  game.colours[0] = ["cyan", "amber", "indigo"];
+  game.lines = [{ from: 0, to: 10, colour: "rose" }];
+  const encoded = encodeCloudGame(game);
+  assert.equal(encoded.colours[0], "cyan|amber|indigo");
+  assert.deepEqual(encoded.lines, [{ from: 0, to: 10, colour: "rose" }]);
+  const decoded = decodeCloudGame(encoded);
+  assert.deepEqual(decoded?.colours[0], ["cyan", "amber", "indigo"]);
+  assert.deepEqual(decoded?.lines, [{ from: 0, to: 10, colour: "rose" }]);
 });

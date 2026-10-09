@@ -1,6 +1,13 @@
 export type Difficulty = "Easy" | "Medium" | "Hard" | "Diabolical";
-export type EntryMode = "normal" | "corner" | "centre" | "colour";
+export type EntryMode = "normal" | "corner" | "centre" | "colour" | "line";
 export type Theme = "system" | "light" | "dark";
+export type AnnotationColour = "cyan" | "amber" | "violet" | "green" | "rose" | "slate" | "lime" | "orange" | "indigo";
+
+export interface ColourLine {
+  from: number;
+  to: number;
+  colour: AnnotationColour;
+}
 
 export interface Puzzle {
   id: string;
@@ -22,7 +29,8 @@ export interface BoardSnapshot {
   values: string[];
   corner: number[][];
   centre: number[][];
-  colours: string[];
+  colours: AnnotationColour[][];
+  lines: ColourLine[];
   eliminated: number[][];
 }
 

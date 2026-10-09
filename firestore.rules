@@ -10,7 +10,7 @@ service cloud.firestore {
     function validGame(id) {
       let d = request.resource.data;
       return d.keys().hasAll(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
-        && d.keys().hasOnly(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'hintHistory', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
+        && d.keys().hasOnly(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'lines', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'hintHistory', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
         && d.version == 1
         && d.id == id && validId(id)
         && d.puzzle is map && validId(d.puzzle.id)
@@ -20,10 +20,11 @@ service cloud.firestore {
         && d.corner is list && d.corner.size() == 81
         && d.centre is list && d.centre.size() == 81
         && d.colours is list && d.colours.size() == 81
+        && (!('lines' in d) || (d.lines is list && d.lines.size() <= 160))
         && d.eliminated is list && d.eliminated.size() == 81
         && d.selected is list && d.selected.size() <= 81
         && d.anchor is int && d.anchor >= 0 && d.anchor < 81
-        && d.mode in ['normal', 'corner', 'centre', 'colour']
+        && d.mode in ['normal', 'corner', 'centre', 'colour', 'line']
         && d.history is list && d.history.size() <= 80
         && d.future is list && d.future.size() <= 80
         && (!('hintHistory' in d) || (d.hintHistory is list && d.hintHistory.size() <= 40))

@@ -1,14 +1,16 @@
 import { applyHint as applyLogicalHint, candidateList, isSolved, peers } from "./sudoku.ts";
-import type { BoardSnapshot, EntryMode, Game, Hint, Puzzle } from "./types.ts";
+import type { AnnotationColour, BoardSnapshot, EntryMode, Game, Hint, Puzzle } from "./types.ts";
 
 const clone2d = (items: number[][]) => items.map((item) => [...item]);
+const cloneColours = (items: AnnotationColour[][]) => items.map((item) => [...item]);
 
 export function snapshot(game: Game): BoardSnapshot {
   return {
     values: [...game.values],
     corner: clone2d(game.corner),
     centre: clone2d(game.centre),
-    colours: [...game.colours],
+    colours: cloneColours(game.colours),
+    lines: game.lines.map((line) => ({ ...line })),
     eliminated: clone2d(game.eliminated),
   };
 }
@@ -17,7 +19,8 @@ function restore(game: Game, state: BoardSnapshot) {
   game.values = [...state.values];
   game.corner = clone2d(state.corner);
   game.centre = clone2d(state.centre);
-  game.colours = [...state.colours];
+  game.colours = cloneColours(state.colours);
+  game.lines = (state.lines || []).map((line) => ({ ...line }));
   game.eliminated = clone2d(state.eliminated);
 }
 
@@ -28,7 +31,8 @@ export function createGame(puzzle: Puzzle, now = Date.now()): Game {
     values: puzzle.givens.split("").map((value) => (value === "0" ? "" : value)),
     corner: Array.from({ length: 81 }, () => []),
     centre: Array.from({ length: 81 }, () => []),
-    colours: Array(81).fill(""),
+    colours: Array.from({ length: 81 }, () => []),
+    lines: [],
     eliminated: Array.from({ length: 81 }, () => []),
     selected: [puzzle.givens.indexOf("0")],
     anchor: puzzle.givens.indexOf("0"),
@@ -119,9 +123,39 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
   completeIfSolved(game);
 }
 
-export function applyColour(game: Game, colour: string) {
+export function applyColour(game: Game, colour: AnnotationColour) {
+  const remove = game.selected.length > 0 && game.selected.every((cell) => game.colours[cell].includes(colour));
   startChange(game);
-  for (const cell of game.selected) game.colours[cell] = game.colours[cell] === colour ? "" : colour;
+  for (const cell of game.selected) {
+    if (remove) game.colours[cell] = game.colours[cell].filter((item) => item !== colour);
+    else if (!game.colours[cell].includes(colour)) game.colours[cell].push(colour);
+  }
+}
+
+export function clearColours(game: Game) {
+  if (!game.selected.some((cell) => game.colours[cell].length)) return false;
+  startChange(game);
+  for (const cell of game.selected) game.colours[cell] = [];
+  return true;
+}
+
+export function toggleLine(game: Game, first: number, second: number, colour: AnnotationColour) {
+  if (first === second || first < 0 || first > 80 || second < 0 || second > 80) return false;
+  const from = Math.min(first, second);
+  const to = Math.max(first, second);
+  const existing = game.lines.findIndex((line) => line.from === from && line.to === to);
+  startChange(game);
+  if (existing >= 0 && game.lines[existing].colour === colour) game.lines.splice(existing, 1);
+  else if (existing >= 0) game.lines[existing] = { from, to, colour };
+  else game.lines.push({ from, to, colour });
+  return true;
+}
+
+export function clearLines(game: Game) {
+  if (!game.lines.length) return false;
+  startChange(game);
+  game.lines = [];
+  return true;
 }
 
 export function clearSelected(game: Game) {
@@ -132,7 +166,7 @@ export function clearSelected(game: Game) {
     if (game.mode === "normal") game.values[cell] = "";
     else if (game.mode === "corner") game.corner[cell] = [];
     else if (game.mode === "centre") game.centre[cell] = [];
-    else game.colours[cell] = "";
+    else if (game.mode === "colour") game.colours[cell] = [];
   }
   game.completedAt = null;
 }

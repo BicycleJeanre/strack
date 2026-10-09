@@ -23,13 +23,14 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import type { Store } from "./store.ts";
-import type { BoardSnapshot, Game, Preferences } from "./types.ts";
+import type { AnnotationColour, BoardSnapshot, Game, Preferences } from "./types.ts";
 
+const environment = import.meta.env ?? {};
 const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: environment.VITE_FIREBASE_API_KEY,
+  authDomain: environment.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: environment.VITE_FIREBASE_PROJECT_ID,
+  appId: environment.VITE_FIREBASE_APP_ID,
 };
 
 export const cloudConfigured = Object.values(config).every(Boolean);
@@ -41,7 +42,7 @@ const database = app
     })
   : null;
 
-if (import.meta.env.VITE_USE_EMULATORS === "true" && auth && database) {
+if (environment.VITE_USE_EMULATORS === "true" && auth && database) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(database, "127.0.0.1", 8080);
 }
@@ -65,13 +66,14 @@ export async function sendReset(email: string) {
   await sendPasswordResetEmail(auth, email);
 }
 
-type CloudSnapshot = Omit<BoardSnapshot, "corner" | "centre" | "eliminated"> & {
+type CloudSnapshot = Omit<BoardSnapshot, "corner" | "centre" | "colours" | "eliminated"> & {
   corner: string[];
   centre: string[];
+  colours: string[];
   eliminated: string[];
 };
 
-type CloudGame = Omit<Game, "corner" | "centre" | "eliminated" | "history" | "future" | "hintHistory"> & CloudSnapshot & {
+type CloudGame = Omit<Game, "corner" | "centre" | "colours" | "eliminated" | "history" | "future" | "hintHistory"> & CloudSnapshot & {
   version: 1;
   history: string[];
   future: string[];
@@ -80,16 +82,19 @@ type CloudGame = Omit<Game, "corner" | "centre" | "eliminated" | "history" | "fu
 
 const encodeMarks = (marks: number[][]) => marks.map((digits) => [...digits].sort().join(""));
 const decodeMarks = (marks: string[]) => marks.map((digits) => [...digits].map(Number).filter((digit) => digit >= 1 && digit <= 9));
+const encodeColours = (colours: AnnotationColour[][]) => colours.map((items) => items.join("|"));
+const validColours = new Set<AnnotationColour>(["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"]);
+const decodeColours = (colours: string[]) => colours.map((items) => items.split("|").filter((colour): colour is AnnotationColour => validColours.has(colour as AnnotationColour)));
 
 function encodeSnapshot(snapshot: BoardSnapshot): CloudSnapshot {
-  return { ...snapshot, corner: encodeMarks(snapshot.corner), centre: encodeMarks(snapshot.centre), eliminated: encodeMarks(snapshot.eliminated) };
+  return { ...snapshot, corner: encodeMarks(snapshot.corner), centre: encodeMarks(snapshot.centre), colours: encodeColours(snapshot.colours), eliminated: encodeMarks(snapshot.eliminated) };
 }
 
 function decodeSnapshot(value: string): BoardSnapshot | null {
   try {
     const snapshot = JSON.parse(value) as CloudSnapshot;
     if (snapshot.values?.length !== 81 || snapshot.corner?.length !== 81 || snapshot.centre?.length !== 81 || snapshot.colours?.length !== 81 || snapshot.eliminated?.length !== 81) return null;
-    return { ...snapshot, corner: decodeMarks(snapshot.corner), centre: decodeMarks(snapshot.centre), eliminated: decodeMarks(snapshot.eliminated) };
+    return { ...snapshot, corner: decodeMarks(snapshot.corner), centre: decodeMarks(snapshot.centre), colours: decodeColours(snapshot.colours), eliminated: decodeMarks(snapshot.eliminated), lines: Array.isArray(snapshot.lines) ? snapshot.lines : [] };
   } catch {
     return null;
   }
@@ -101,6 +106,7 @@ export function encodeCloudGame(game: Game): CloudGame {
     version: 1,
     corner: encodeMarks(game.corner),
     centre: encodeMarks(game.centre),
+    colours: encodeColours(game.colours),
     eliminated: encodeMarks(game.eliminated),
     history: game.history.slice(-80).map((snapshot) => JSON.stringify(encodeSnapshot(snapshot))),
     future: game.future.slice(-80).map((snapshot) => JSON.stringify(encodeSnapshot(snapshot))),
@@ -110,7 +116,7 @@ export function encodeCloudGame(game: Game): CloudGame {
 
 export function decodeCloudGame(value: unknown): Game | null {
   const game = value as CloudGame;
-  if (!game || game.version !== 1 || typeof game.id !== "string" || game.puzzle?.givens?.length !== 81 || game.values?.length !== 81 || game.corner?.length !== 81 || game.centre?.length !== 81 || game.eliminated?.length !== 81 || typeof game.updatedAt !== "number") return null;
+  if (!game || game.version !== 1 || typeof game.id !== "string" || game.puzzle?.givens?.length !== 81 || game.values?.length !== 81 || game.corner?.length !== 81 || game.centre?.length !== 81 || game.colours?.length !== 81 || game.eliminated?.length !== 81 || !Array.isArray(game.history) || !Array.isArray(game.future) || typeof game.updatedAt !== "number") return null;
   const history = game.history.map(decodeSnapshot);
   const future = game.future.map(decodeSnapshot);
   let hintHistory: Game["hintHistory"] = [];
@@ -118,7 +124,7 @@ export function decodeCloudGame(value: unknown): Game | null {
   catch { return null; }
   if (history.some((item) => !item) || future.some((item) => !item) || hintHistory.length > 40) return null;
   const { version: _version, ...rest } = game;
-  return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), eliminated: decodeMarks(game.eliminated), history: history as BoardSnapshot[], future: future as BoardSnapshot[], hintHistory };
+  return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), colours: decodeColours(game.colours), eliminated: decodeMarks(game.eliminated), lines: Array.isArray(game.lines) ? game.lines : [], history: history as BoardSnapshot[], future: future as BoardSnapshot[], hintHistory };
 }
 
 type CloudSettings = { preferences: Preferences; activeGameId: string | null; deletedGames?: Record<string, number>; updatedAt: number };
@@ -133,9 +139,13 @@ export class CloudSync {
   working = false;
   error = "";
   ready = false;
+  private store: Store;
+  private changed: () => void;
   private stops: Unsubscribe[] = [];
 
-  constructor(private store: Store, private changed: () => void) {
+  constructor(store: Store, changed: () => void) {
+    this.store = store;
+    this.changed = changed;
     addEventListener("online", () => {
       if (this.user) void this.uploadLocal();
     });

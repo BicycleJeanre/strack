@@ -11,7 +11,7 @@ Every bundled puzzle works offline after the first successful production load. T
 Select a cell, choose an entry mode, then choose a number:
 
 - **Digit** enters an answer.
-- **Corner** stores short Snyder-style marks in the top-left corner, using the warm note colour. The marks stay on one line until they need to wrap and remain visible if the cell receives an answer.
+- **Corner** stores short Snyder-style marks in the top-left corner, using the warm note colour. The marks stay on one line until they need to wrap.
 - **Centre** stores a cool-coloured candidate list in the middle. It also wraps only when necessary and is cleared when the cell receives an answer.
 - **Colour** applies one of six cell shades. Each coloured cell also has a bordered dot, so the state is not conveyed by colour alone.
 
@@ -19,7 +19,7 @@ Turn on **Multi-select** to add or remove individual cells from the selection. O
 
 Given cells cannot be changed. If **Clean notes after entry** is on, entering a final digit removes it from corner and centre notes in peer cells.
 
-Entering a final digit retains that cell's corner notes but clears its centre candidates, since candidates describe an empty cell.
+Entering a final digit clears both corner and centre notes from that cell, because both note types describe an unanswered cell.
 
 When several cells are selected, entering a digit from normal **Digit** mode defaults to corner notation across those cells. Explicit **Corner** and **Centre** modes keep their usual behavior.
 
@@ -27,7 +27,9 @@ Multi-cell notes use one selection-wide toggle: if any selected cell is missing 
 
 **Calculate all candidates** removes corner notes and writes the candidates currently allowed by each empty editable cell's row, column, box, and recorded eliminations as centre notes. The entire calculation is one undoable action.
 
-The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Selecting outside the grid clears the cell selection. With no cells selected, number-pad digits toggle independently so several values can be highlighted together without changing the puzzle.
+The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Turn on **Highlight values** to deselect cells and make number-pad digits toggle independently, allowing several values to be highlighted together without changing the puzzle. Clicking blank space outside the grid and buttons clears the cell selection, highlight mode, and every active value highlight.
+
+Solving the final cell triggers a short board pulse, animated completion banner, confetti, and a gentle vibration on supported devices. Reduced-motion preferences shorten these effects to an effectively static confirmation.
 
 Once all nine instances of a digit are placed, its number-pad button turns grey. Clearing or undoing one of those values restores the button immediately; the grey state is informational and does not block note entry or corrections.
 

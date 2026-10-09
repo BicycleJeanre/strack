@@ -99,6 +99,7 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
   for (const cell of editable) {
     if (mode === "normal") {
       game.values[cell] = String(digit);
+      game.corner[cell] = [];
       game.centre[cell] = [];
       game.eliminated[cell] = [];
       if (cleanCandidates) {

@@ -33,7 +33,7 @@ Use the GTrack technical pattern unless implementation evidence supports a bette
 - deterministic unit tests plus Chromium and WebKit Playwright coverage;
 - manual production deployment workflow after checks pass.
 
-Cloud accounts and Firebase sync are explicitly out of the first release. The architecture may leave room for later cross-device sync, but offline play must not depend on sign-in or a server.
+The original first-release scope excluded cloud accounts. Before production deployment, the product owner extended the release to include optional Firebase email/password accounts and private cross-device puzzle-session synchronization. Offline play still must not depend on sign-in or a server: every edit saves to IndexedDB first, and the bundled catalogue, solver, hints, preferences, help, and active progress remain available offline.
 
 ## Puzzle supply and provenance
 
@@ -91,6 +91,7 @@ The first release must support at least the techniques necessary for its bundled
 - Provide clear reset actions scoped to the current puzzle, history, or all local data.
 - Make it explicit that browser storage can be cleared or evicted and that export is the backup mechanism in version 1.
 - No analytics, ads, or network calls are required for core play.
+- Optional signed-in sync stores each user's games and settings only under owner-protected Firestore paths and reconciles by the newest saved puzzle version.
 
 ## Acceptance criteria for the first implementation task
 
@@ -115,4 +116,3 @@ The first release must support at least the techniques necessary for its bundled
 - QQWing generator: <https://github.com/stephenostermiller/qqwing>.
 - SukakuExplainer rating engine and documentation: <https://github.com/SudokuMonster/SukakuExplainer>.
 - CC0 human difficulty dataset: <https://github.com/synnwang/sudoku_dataset_difficulty>.
-

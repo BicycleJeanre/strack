@@ -210,10 +210,11 @@ test("selecting a placed value highlights matching corner and centre notes", asy
   await empty.nth(1).click();
   await page.getByRole("button", { name: "Centre", exact: true }).click();
   await page.locator(`[data-digit="${digit}"]`).click();
-  const phoneNoteSizes = await Promise.all([
-    empty.nth(0).locator(".corner-marks i"),
-    empty.nth(1).locator(".centre-marks i"),
-  ].map((note) => note.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))));
+  const cornerNote = empty.nth(0).locator(".corner-marks i");
+  const centreNote = empty.nth(1).locator(".centre-marks i");
+  await expect(cornerNote).toHaveText(digit!);
+  await expect(centreNote).toHaveText(digit!);
+  const phoneNoteSizes = await Promise.all([cornerNote, centreNote].map((note) => note.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))));
   expect(phoneNoteSizes[0]).toBeGreaterThanOrEqual(10);
   expect(phoneNoteSizes[1]).toBeGreaterThanOrEqual(11);
 

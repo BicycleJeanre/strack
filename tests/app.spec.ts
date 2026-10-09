@@ -380,13 +380,27 @@ test("number-pad digits grey out after all nine are placed and recover on undo",
 test("hints can show answers, be dismissed, and remain available in history", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   await page.getByRole("button", { name: "Get a logical hint" }).click();
+  const hint = page.locator(".hint-panel");
+  await expect(hint).not.toContainText(/\b[1-9]\b/);
+  await expect(hint.locator(".hint-answer")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Apply deduction" })).toHaveCount(0);
+  await expect(page.locator(".sudoku-cell.hint-target")).toHaveCount(0);
+  expect(await page.locator(".sudoku-cell.hint-focus").count()).toBeGreaterThan(0);
   await expect(page.getByRole("button", { name: "Show answer" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Dismiss hint" })).toBeVisible();
 
   await page.getByRole("button", { name: "Show answer" }).click();
   await expect(page.locator(".hint-answer")).toContainText(/(Place|Remove) [1-9]/);
+  await expect(page.getByRole("button", { name: "Apply deduction" })).toBeVisible();
+  expect(await page.locator(".sudoku-cell.hint-target").count()).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Dismiss hint" }).click();
   await expect(page.locator(".hint-panel")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Get a logical hint" }).click();
+  await expect(page.locator(".hint-panel .hint-answer")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Apply deduction" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Show answer" })).toBeVisible();
+  await page.getByRole("button", { name: "Dismiss hint" }).click();
 
   await page.getByRole("button", { name: "Previous hints (1)" }).click();
   const history = page.getByRole("dialog");

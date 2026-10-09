@@ -63,10 +63,10 @@ The home screen separates unfinished games under **Recent puzzles** from solved 
 
 **Hint** is intentionally progressive:
 
-1. STrack highlights the evidence and target cells.
-2. It names the technique and explains the deduction in plain language.
-3. **Show answer** exposes the exact placement or elimination without changing the grid.
-4. **Apply deduction** places the forced value or records candidate eliminations.
+1. STrack highlights the evidence and focus cells without naming the digit or exact elimination.
+2. It names the technique and explains what pattern to inspect in plain language.
+3. **Show answer** explicitly exposes the exact placement or elimination without changing the grid.
+4. Only after that reveal, **Apply deduction** places the forced value or records candidate eliminations.
 
 You can **Dismiss hint** without applying it. Each puzzle keeps a private hint notebook; open **Previous hints** to review earlier explanations and reveal their answers again.
 

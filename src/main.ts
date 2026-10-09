@@ -21,6 +21,7 @@ let maxRating = "";
 let multiSelect = false;
 let highlightMode = false;
 let activeHint: Hint | null = null;
+let revealedHintId: string | null = null;
 let timerSaveCounter = 0;
 let cloudUser: CloudUser | null = null;
 let suppressCellClick = false;
@@ -86,6 +87,7 @@ function navigate(next: View) {
   }
   view = next;
   activeHint = null;
+  revealedHintId = null;
   history.replaceState(null, "", location.pathname + (next === "import" && new URLSearchParams(location.search).has("p") ? location.search : ""));
   render();
 }
@@ -204,13 +206,14 @@ function showPuzzleInfo(puzzle: Puzzle) {
     <p>${escapeHtml(puzzle.provenance)}</p><p><strong>What SE means:</strong> the number represents the hardest technique on SukakuExplainer’s selected logical solve path. It is useful and reproducible, but not a universal or official difficulty scale.</p>`, "Close details");
 }
 
-function cellMarkup(game: Game, cell: number, hint: Hint | null): string {
+function cellMarkup(game: Game, cell: number, hint: Hint | null, answerShown: boolean): string {
   const value = game.values[cell];
   const given = game.puzzle.givens[cell] !== "0";
   const selected = game.selected.includes(cell);
   const noteDigit = (digit: number) => `<i${store.data.preferences.highlightMatches && highlightedDigits.has(digit) ? ` class="note-match"` : ""}>${digit}</i>`;
   const cellColours = game.colours[cell];
-  const classes = ["sudoku-cell", given ? "given" : "", value ? "has-value" : "", game.corner[cell].length ? "has-corner" : "", game.centre[cell].length ? "has-centre" : "", cellColours.length ? "has-colours" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => game.values[chosen] && peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && value && highlightedDigits.has(Number(value)) ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hint?.targets.some((target) => target.cell === cell) ? "hint-target" : ""].filter(Boolean).join(" ");
+  const hintFocus = hint?.targets.some((target) => target.cell === cell);
+  const classes = ["sudoku-cell", given ? "given" : "", value ? "has-value" : "", game.corner[cell].length ? "has-corner" : "", game.centre[cell].length ? "has-centre" : "", cellColours.length ? "has-colours" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => game.values[chosen] && peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && value && highlightedDigits.has(Number(value)) ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hintFocus ? answerShown ? "hint-target" : "hint-focus" : ""].filter(Boolean).join(" ");
   let content = cellColours.length ? `<span class="cell-colours" style="--colour-count:${cellColours.length}" aria-hidden="true">${cellColours.map((colour) => `<i class="colour-${colour}"></i>`).join("")}</span>` : "";
   if (value) content = `<span class="cell-value">${value}</span>`;
   if (game.corner[cell].length) content += `<span class="corner-marks">${game.corner[cell].map(noteDigit).join("")}</span>`;
@@ -250,11 +253,22 @@ function hintAnswer(hint: Hint) {
   return hint.targets.map((target) => `${action} ${target.digit}${joiner}${cellLabel(target.cell)}`).join("; ") + ".";
 }
 
+function hintPreview(hint: Hint) {
+  if (hint.technique === "Naked single") return { summary: "One focus cell has only one possible candidate.", explanation: "Use the placed digits in its row, column, and box to rule out the other candidates." };
+  if (hint.technique === "Hidden single") return { summary: "One candidate has only one possible home in a unit.", explanation: "Compare the highlighted unit with the intersecting rows, columns, and boxes to find which candidate is blocked everywhere else." };
+  if (hint.technique === "Locked candidates") return { summary: "A candidate is confined to one line inside a box.", explanation: "When every possible position for a candidate in a box lies on the same row or column, look for that candidate elsewhere on the line." };
+  if (hint.technique === "Naked pair") return { summary: "Two highlighted cells confine the same two candidates.", explanation: "Those candidates must occupy the highlighted cells, so inspect the other cells in the unit for a deduction." };
+  if (hint.technique === "Naked triple") return { summary: "Three highlighted cells confine the same three candidates.", explanation: "Those candidates must occupy the highlighted cells, so inspect the other cells in the unit for a deduction." };
+  if (hint.technique === "X-Wing") return { summary: "A candidate forms the same two-column pattern across two rows.", explanation: "Compare the four highlighted corners and consider where that candidate can still appear in the intersecting columns." };
+  return { summary: "The highlighted cells contain a logical next step.", explanation: "Review their candidates and shared units before revealing the exact deduction." };
+}
+
 function showHintHistory(game: Game) {
   const items = [...game.hintHistory].reverse();
   showDialog(`<span class="eyebrow">Puzzle notebook</span><h2>Previous hints</h2>${items.length ? `<div class="hint-history">${items.map((hint) => {
     const outcome = hint.applied ? "Applied" : hint.dismissed ? "Dismissed" : hint.answerShown ? "Answer viewed" : "Viewed";
-    return `<article><div><strong>${escapeHtml(hint.technique)}</strong><small>${escapeHtml(outcome)} · ${escapeHtml(new Date(hint.viewedAt).toLocaleString())}</small></div><h3>${escapeHtml(hint.summary)}</h3><p>${escapeHtml(hint.explanation)}</p><details><summary>Show answer</summary><p class="hint-answer">${escapeHtml(hintAnswer(hint))}</p></details></article>`;
+    const preview = hintPreview(hint);
+    return `<article><div><strong>${escapeHtml(hint.technique)}</strong><small>${escapeHtml(outcome)} · ${escapeHtml(new Date(hint.viewedAt).toLocaleString())}</small></div><h3>${escapeHtml(preview.summary)}</h3><p>${escapeHtml(preview.explanation)}</p><details><summary>Show answer</summary><p class="hint-answer">${escapeHtml(hintAnswer(hint))}</p></details></article>`;
   }).join("")}</div>` : `<p>No hints have been viewed for this puzzle yet.</p>`}`, "Close history");
 }
 
@@ -264,6 +278,8 @@ function renderPlayer() {
   if (game.hintStage === "preview") activeHint = recordedHint(game, game.hintId) || findHint(game.values, game.eliminated);
   else activeHint = null;
   const activeRecord = activeHint ? recordedHint(game, activeHint.id) : null;
+  const answerShown = activeHint?.id === revealedHintId;
+  const preview = activeHint ? hintPreview(activeHint) : null;
   const wrong = game.values.some((value, cell) => value && value !== game.puzzle.solution[cell]);
   const celebrating = celebratingGameId === game.id && Boolean(game.completedAt);
   shell(`
@@ -271,13 +287,13 @@ function renderPlayer() {
     <section class="player-layout">
       <div class="board-column">
         <div class="board-status"><span id="timer" class="timer ${store.data.preferences.showTimer ? "" : "hidden"}">${formatTime(game.elapsed)}</span><span>${game.completedAt ? "Solved" : game.paused ? "Paused" : navigator.onLine ? "Saved on device" : "Saved · offline"}</span></div>
-        <div class="sudoku-board ${game.mode === "line" ? "drawing-lines" : ""} ${game.paused && !game.completedAt ? "paused" : ""} ${celebrating ? "celebrating" : ""}" role="grid" aria-label="Sudoku board">${Array.from({ length: 81 }, (_, cell) => cellMarkup(game, cell, activeHint)).join("")}${lineMarkup(game)}${game.paused && !game.completedAt ? `<button class="pause-cover" id="resume-board"><strong>Paused</strong><span>Tap to continue</span></button>` : ""}</div>
+        <div class="sudoku-board ${game.mode === "line" ? "drawing-lines" : ""} ${game.paused && !game.completedAt ? "paused" : ""} ${celebrating ? "celebrating" : ""}" role="grid" aria-label="Sudoku board">${Array.from({ length: 81 }, (_, cell) => cellMarkup(game, cell, activeHint, answerShown)).join("")}${lineMarkup(game)}${game.paused && !game.completedAt ? `<button class="pause-cover" id="resume-board"><strong>Paused</strong><span>Tap to continue</span></button>` : ""}</div>
         ${celebrating ? `<div class="completion-confetti" aria-hidden="true">${Array.from({ length: 14 }, () => "<i></i>").join("")}</div>` : ""}
         ${game.completedAt ? `<div class="completion-banner ${celebrating ? "celebrating" : ""}" role="status"><span aria-hidden="true">★</span><div><strong>Puzzle complete!</strong><small>${game.puzzle.difficulty} · ${rating(game.puzzle)} · ${formatTime(game.elapsed)}</small></div><button id="next-puzzle">Next puzzle</button></div>` : ""}
       </div>
       <aside class="controls" aria-label="Puzzle controls">
         <div class="toolbar"><button id="undo" aria-label="Undo" ${!game.history.length ? "disabled" : ""}>↶<small>Undo</small></button><button id="redo" aria-label="Redo" ${!game.future.length ? "disabled" : ""}>↷<small>Redo</small></button><button id="pause" aria-label="${game.paused ? "Resume" : "Pause"} puzzle">${game.paused ? "▶" : "Ⅱ"}<small>${game.paused ? "Resume" : "Pause"}</small></button><button id="hint" aria-label="Get a logical hint">?<small>Hint</small></button></div>
-        ${activeHint ? `<div class="hint-panel" role="status"><span class="eyebrow">${escapeHtml(activeHint.technique)}</span><h3>${escapeHtml(activeHint.summary)}</h3><p>${escapeHtml(activeHint.explanation)}</p>${activeRecord?.answerShown ? `<p class="hint-answer"><strong>Answer:</strong> ${escapeHtml(hintAnswer(activeHint))}</p>` : ""}<div class="actions"><button id="apply-hint" class="primary compact">Apply deduction</button>${activeRecord?.answerShown ? "" : `<button id="show-hint-answer" class="secondary compact">Show answer</button>`}<button id="dismiss-hint" class="text-button">Dismiss hint</button></div></div>` : ""}
+        ${activeHint && preview ? `<div class="hint-panel" role="status"><span class="eyebrow">${escapeHtml(activeHint.technique)}</span><h3>${escapeHtml(preview.summary)}</h3><p>${escapeHtml(preview.explanation)}</p>${answerShown ? `<p class="hint-answer"><strong>Answer:</strong> ${escapeHtml(hintAnswer(activeHint))}</p>` : ""}<div class="actions">${answerShown ? `<button id="apply-hint" class="primary compact">Apply deduction</button>` : `<button id="show-hint-answer" class="secondary compact">Show answer</button>`}<button id="dismiss-hint" class="text-button">Dismiss hint</button></div></div>` : ""}
         ${game.hintHistory.length ? `<button id="hint-history" class="history-button">Previous hints (${game.hintHistory.length})</button>` : ""}
         ${wrong && !store.data.preferences.showMistakes ? `<p class="quiet-warning">Something on the board conflicts with the solution. Turn on mistake checks in Settings for cell-level cues.</p>` : ""}
         <div class="mode-switch" role="group" aria-label="Entry mode">${([['normal','Digit'],['corner','Corner'],['centre','Centre'],['colour','Colour'],['line','Lines']] as [EntryMode,string][]).map(([mode,label]) => `<button data-mode="${mode}" class="${game.mode === mode ? "active" : ""}" aria-pressed="${game.mode === mode}">${label}</button>`).join("")}</div>
@@ -340,6 +356,7 @@ function bindPlayer(game: Game) {
   app.querySelector("#puzzle-info")?.addEventListener("click", () => showPuzzleInfo(game.puzzle));
   app.querySelector("#hint")?.addEventListener("click", async () => {
     activeHint = findHint(game.values, game.eliminated);
+    revealedHintId = null;
     game.hintStage = activeHint ? "preview" : "none";
     game.hintId = activeHint?.id || null;
     if (activeHint) {
@@ -364,13 +381,14 @@ function bindPlayer(game: Game) {
   app.querySelector("#show-hint-answer")?.addEventListener("click", async () => {
     if (!activeHint) return;
     const record = recordedHint(game, activeHint.id); if (record) record.answerShown = true;
+    revealedHintId = activeHint.id;
     game.updatedAt = Date.now();
     await store.putGame(game);
     renderPlayer();
   });
   app.querySelector("#dismiss-hint")?.addEventListener("click", async () => {
     if (activeHint) { const record = recordedHint(game, activeHint.id); if (record) record.dismissed = true; }
-    activeHint = null; game.hintStage = "none"; game.hintId = null; game.updatedAt = Date.now();
+    activeHint = null; revealedHintId = null; game.hintStage = "none"; game.hintId = null; game.updatedAt = Date.now();
     await store.putGame(game);
     renderPlayer();
   });
@@ -487,6 +505,7 @@ async function changeGame(game: Game, change: () => unknown) {
     celebrationTimer = window.setTimeout(() => { if (celebratingGameId === game.id) celebratingGameId = null; celebrationTimer = null; }, 2400);
   }
   activeHint = null;
+  revealedHintId = null;
   await store.putGame(game);
   renderPlayer();
 }
@@ -585,7 +604,7 @@ function showDialog(content: string, closeLabel = "Done") {
 }
 
 function showHelp() {
-  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour offers nine independently toggled shades; cells divide into equal segments when several are applied, with dots as a second cue. Lines uses the same palette: drag between cells, or select exactly two and connect them. Repeating a colored connection removes it; choosing another color recolors it. All annotations support undo, offline saves, backup, and signed-in sync. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, L for lines, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour offers nine independently toggled shades; cells divide into equal segments when several are applied, with dots as a second cue. Lines uses the same palette: drag between cells, or select exactly two and connect them. Repeating a colored connection removes it; choosing another color recolors it. All annotations support undo, offline saves, backup, and signed-in sync. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, L for lines, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique without revealing the digit or exact elimination. Show answer explicitly reveals the deduction; only then does Apply deduction become available. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
 }
 
 function accountError(error: unknown) {

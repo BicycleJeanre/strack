@@ -182,11 +182,13 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .given .cell-value { font-weight: 820; }
 .corner-marks { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); position: absolute; z-index: 1; inset: 3px; pointer-events: none; }
 .corner-marks i { display: grid; place-items: center; color: var(--board-note); font-size: clamp(6px, 1.4vw, 11px); font-style: normal; font-weight: 750; }
-.corner-marks.auto { opacity: .58; }
+.corner-marks.auto i { opacity: .58; }
+.corner-marks i.note-match, .centre-marks i.note-match { border-radius: 50%; background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); opacity: 1; }
 .sudoku-cell.has-value.has-corner .corner-marks { inset: 3px auto auto 3px; width: 40%; height: 40%; }
 .sudoku-cell.has-value.has-corner .corner-marks i { font-size: clamp(5px, .95vw, 8px); }
 .sudoku-cell.has-value.has-corner .cell-value { position: absolute; right: 5%; bottom: 8%; font-size: clamp(18px, 4vw, 26px); }
 .centre-marks { position: relative; z-index: 3; padding: 1px 2px; border-radius: 3px; background: var(--board-note-bg); color: var(--board-note); font-size: clamp(8px, 1.7vw, 13px); font-weight: 750; letter-spacing: -1px; }
+.centre-marks i { display: inline-grid; min-width: 1em; place-items: center; font-style: normal; letter-spacing: 0; }
 .sudoku-cell.has-value .centre-marks { position: absolute; left: 3px; bottom: 3px; max-width: 52%; overflow: hidden; font-size: clamp(6px, 1.1vw, 9px); }
 .colour-cue { position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border: 1px solid var(--board-cue-border); border-radius: 50%; background: var(--cell-colour, transparent); }
 .sudoku-cell:not([class*="colour-"]) .colour-cue { display: none; }

@@ -427,7 +427,15 @@ test("narrow phone and landscape controls do not overflow", async ({ page }) => 
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.getByRole("grid", { name: "Sudoku board" })).toBeVisible();
+  await expect(page.locator(".player-main .page-heading")).toBeHidden();
+  const narrowPad = (await page.locator(".number-pad").boundingBox())!;
+  expect(narrowPad.y + narrowPad.height).toBeLessThanOrEqual(740);
   await page.screenshot({ path: "test-results/player-phone.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => {
+    const pad = (await page.locator(".number-pad").boundingBox())!;
+    return Math.round(pad.y + pad.height);
+  }).toBeLessThanOrEqual(844);
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(page.getByRole("button", { name: "Get a logical hint" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

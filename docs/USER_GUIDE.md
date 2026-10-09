@@ -29,6 +29,8 @@ Multi-cell notes use one selection-wide toggle: if any selected cell is missing 
 
 The number buttons use a 3×3 keypad. The most recently entered digit stays active and highlights matching placed values in the grid. Matching corner, centre, and automatic candidate notes keep their original warm or cool text color and gain a larger circular outline plus heavier type, so highlighting never covers the value. Turn on **Highlight values** to deselect cells and make keypad digits toggle independently, allowing several values to be highlighted together without changing the puzzle. Clicking blank space outside the grid and buttons clears the cell selection, highlight mode, and every active value highlight.
 
+On a phone in portrait orientation, the player removes the redundant page heading and tightens its spacing so the board and complete number keypad remain available in the initial screen. Secondary selection and candidate tools continue below and can be reached by scrolling.
+
 Solving the final cell triggers a short board pulse, animated completion banner, confetti, and a gentle vibration on supported devices. Reduced-motion preferences shorten these effects to an effectively static confirmation.
 
 Once all nine instances of a digit are placed, its number-pad button turns grey. Clearing or undoing one of those values restores the button immediately; the grey state is informational and does not block note entry or corrections.

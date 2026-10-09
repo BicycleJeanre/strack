@@ -161,6 +161,7 @@ test("the last entered digit remains active and highlights matching grid values"
 });
 
 test("selecting a placed value highlights matching corner and centre notes", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const digit = await page.locator(".sudoku-cell.given .cell-value").first().textContent();
   expect(digit).toMatch(/^[1-9]$/);
@@ -172,6 +173,12 @@ test("selecting a placed value highlights matching corner and centre notes", asy
   await empty.nth(1).click();
   await page.getByRole("button", { name: "Centre", exact: true }).click();
   await page.locator(`[data-digit="${digit}"]`).click();
+  const phoneNoteSizes = await Promise.all([
+    empty.nth(0).locator(".corner-marks i"),
+    empty.nth(1).locator(".centre-marks i"),
+  ].map((note) => note.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))));
+  expect(phoneNoteSizes[0]).toBeGreaterThanOrEqual(10);
+  expect(phoneNoteSizes[1]).toBeGreaterThanOrEqual(11);
 
   const matchingValue = page.locator(".sudoku-cell.given").filter({ has: page.locator(`.cell-value:text-is("${digit}")`) }).first();
   await matchingValue.click();
@@ -182,15 +189,17 @@ test("selecting a placed value highlights matching corner and centre notes", asy
   expect(await page.locator(".note-match").count()).toBeGreaterThanOrEqual(2);
   const matchStyles = await Promise.all([cornerMatch, centreMatch].map((match) => match.evaluate((element) => {
     const style = getComputedStyle(element);
-    return { color: style.color, background: style.backgroundColor, outline: style.outlineStyle, transform: style.transform, weight: Number(style.fontWeight) };
+    return { color: style.color, background: style.backgroundColor, outline: style.outlineStyle, size: Number.parseFloat(style.fontSize), transform: style.transform, weight: Number(style.fontWeight) };
   })));
   expect(matchStyles[0].color).not.toBe(matchStyles[1].color);
   for (const style of matchStyles) {
     expect(style.background).toBe("rgba(0, 0, 0, 0)");
-    expect(style.outline).toBe("solid");
-    expect(style.transform).not.toBe("none");
+    expect(style.outline).toBe("none");
+    expect(style.transform).toBe("none");
     expect(style.weight).toBeGreaterThanOrEqual(900);
   }
+  expect(matchStyles[0].size).toBeGreaterThanOrEqual(12);
+  expect(matchStyles[1].size).toBeGreaterThanOrEqual(13);
 });
 
 test("selecting a placed value highlights matching automatic candidates", async ({ page }) => {

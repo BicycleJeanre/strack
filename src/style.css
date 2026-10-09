@@ -189,7 +189,9 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .given .cell-value { font-weight: 820; }
 .corner-marks { position: absolute; z-index: 4; top: 3px; left: 3px; right: 3px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-start; gap: 0 1px; max-height: 42%; overflow: hidden; pointer-events: none; }
 .corner-marks i { display: inline-grid; min-width: .72em; place-items: center; color: var(--board-corner-note); font-size: clamp(7px, 1.35cqw, 11px); font-style: normal; font-weight: 850; line-height: 1.05; }
-.corner-marks i.note-match, .centre-marks i.note-match { min-width: 1.25em; min-height: 1.25em; border-radius: 50%; background: transparent; outline: 1.5px solid currentColor; outline-offset: -1px; font-weight: 950; line-height: 1; opacity: 1; transform: scale(1.12); }
+.corner-marks i.note-match, .centre-marks i.note-match { font-weight: 950; opacity: 1; }
+.corner-marks i.note-match { font-size: clamp(9px, 1.6cqw, 13px); }
+.centre-marks i.note-match { font-size: clamp(10px, 2cqw, 16px); }
 .centre-marks { position: absolute; z-index: 3; top: 50%; left: 50%; display: flex; width: 90%; max-height: 68%; padding: 1px 2px; overflow: hidden; flex-wrap: wrap; align-content: center; justify-content: center; border-radius: 3px; background: var(--board-note-bg); color: var(--board-centre-note); font-size: clamp(8px, 1.7cqw, 14px); font-weight: 750; line-height: 1.05; transform: translate(-50%, -50%); }
 .centre-marks i { display: inline-grid; min-width: .9em; place-items: center; color: var(--board-centre-note); font-style: normal; }
 .centre-marks.auto i { opacity: .58; }
@@ -305,7 +307,13 @@ dialog::backdrop { background: #020607b8; backdrop-filter: blur(4px); }
   .number-pad { gap: 5px; }
   .number-pad button { min-height: 42px; }
   .number-pad .clear-key { min-height: 38px; }
-  .cell-value { font-size: clamp(18px, 7cqw, 29px); }.corner-marks { top: 2px; left: 2px; right: 2px; }.colour-cue { width: 6px; height: 6px; right: 2px; bottom: 2px; }
+  .cell-value { font-size: clamp(18px, 7cqw, 29px); }
+  .corner-marks { top: 2px; left: 2px; right: 2px; }
+  .corner-marks i { font-size: 10px; }
+  .centre-marks { font-size: 11px; }
+  .corner-marks i.note-match { font-size: 12px; }
+  .centre-marks i.note-match { font-size: 13px; }
+  .colour-cue { width: 6px; height: 6px; right: 2px; bottom: 2px; }
   .control-help { display: none; }.split-layout, .settings-grid { grid-template-columns: 1fr; }
   .account-card { grid-column: auto; }.account-card form { grid-template-columns: 1fr; }.account-card form .actions, .account-card form .text-button, .account-card form #account-feedback { grid-column: auto; }
   .dialog-content dl { grid-template-columns: 1fr; }.dialog-content dt:not(:first-child) { margin-top: 7px; }

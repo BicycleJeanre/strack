@@ -75,9 +75,16 @@ export function digitIsComplete(values: string[], digit: number) {
 
 export function fillAllCandidates(game: Game) {
   const candidates = game.values.map((value, cell) => value || game.puzzle.givens[cell] !== "0" ? null : candidateList(game.values, cell, game.eliminated));
-  if (!candidates.some((digits, cell) => digits && digits.join("") !== game.corner[cell].join(""))) return false;
+  const changed = candidates.some((digits, cell) => game.puzzle.givens[cell] === "0" && (
+    game.corner[cell].length > 0 || game.centre[cell].join("") !== (digits || []).join("")
+  ));
+  if (!changed) return false;
   startChange(game);
-  for (let cell = 0; cell < 81; cell++) if (candidates[cell]) game.corner[cell] = candidates[cell]!;
+  for (let cell = 0; cell < 81; cell++) {
+    if (game.puzzle.givens[cell] !== "0") continue;
+    game.corner[cell] = [];
+    game.centre[cell] = candidates[cell] || [];
+  }
   return true;
 }
 
@@ -92,6 +99,7 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
   for (const cell of editable) {
     if (mode === "normal") {
       game.values[cell] = String(digit);
+      game.centre[cell] = [];
       game.eliminated[cell] = [];
       if (cleanCandidates) {
         for (const peer of peers[cell]) {

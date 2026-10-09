@@ -11,23 +11,23 @@ Every bundled puzzle works offline after the first successful production load. T
 Select a cell, choose an entry mode, then choose a number:
 
 - **Digit** enters an answer.
-- **Corner** stores small Snyder-style marks around the cell. If the cell also has an answer, its corner notes remain visible in a compact cluster at the corner instead of being discarded.
-- **Centre** stores a compact candidate list in the middle. Corner and centre marks are separate and can coexist.
+- **Corner** stores short Snyder-style marks in the top-left corner, using the warm note colour. The marks stay on one line until they need to wrap and remain visible if the cell receives an answer.
+- **Centre** stores a cool-coloured candidate list in the middle. It also wraps only when necessary and is cleared when the cell receives an answer.
 - **Colour** applies one of six cell shades. Each coloured cell also has a bordered dot, so the state is not conveyed by colour alone.
 
 Turn on **Multi-select** to add or remove individual cells from the selection. On a keyboard, Shift + arrow extends the selection; Shift-, Ctrl-, or Command-click also adds or removes a cell. An entry or clear action applies to every selected editable cell.
 
 Given cells cannot be changed. If **Clean notes after entry** is on, entering a final digit removes it from corner and centre notes in peer cells.
 
-Entering a final digit does not erase that cell's own corner or centre notes. Notes remain independently editable so a cell can retain both its entered value and its notation.
+Entering a final digit retains that cell's corner notes but clears its centre candidates, since candidates describe an empty cell.
 
 When several cells are selected, entering a digit from normal **Digit** mode defaults to corner notation across those cells. Explicit **Corner** and **Centre** modes keep their usual behavior.
 
 Multi-cell notes use one selection-wide toggle: if any selected cell is missing the digit, STrack adds it to every selected cell. A second press removes it from every selected cell only once all of them contain it. Mixed selections therefore converge instead of swapping notes between cells.
 
-**Calculate all candidates** replaces the corner notes in every empty editable cell with the candidates currently allowed by its row, column, box, and recorded eliminations. The entire calculation is one undoable action.
+**Calculate all candidates** removes corner notes and writes the candidates currently allowed by each empty editable cell's row, column, box, and recorded eliminations as centre notes. The entire calculation is one undoable action.
 
-The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Selecting another filled cell or entering another digit updates all of those highlights together.
+The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Selecting outside the grid clears the cell selection. With no cells selected, number-pad digits toggle independently so several values can be highlighted together without changing the puzzle.
 
 Once all nine instances of a digit are placed, its number-pad button turns grey. Clearing or undoing one of those values restores the button immediately; the grey state is informational and does not block note entry or corrections.
 

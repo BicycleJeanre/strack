@@ -24,6 +24,7 @@ test("owners can store and read valid games while other users cannot", async () 
   const owner = environment.authenticatedContext("owner").firestore();
   const other = environment.authenticatedContext("other").firestore();
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/game-1"), game));
+  await assertSucceeds(setDoc(doc(owner, "users/owner/games/deselected"), { ...game, id: "deselected", selected: [] }));
   const { hintHistory: _hintHistory, ...legacyGame } = game;
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/legacy"), { ...legacyGame, id: "legacy" }));
   await assertSucceeds(getDoc(doc(owner, "users/owner/games/game-1")));

@@ -21,7 +21,7 @@ service cloud.firestore {
         && d.centre is list && d.centre.size() == 81
         && d.colours is list && d.colours.size() == 81
         && d.eliminated is list && d.eliminated.size() == 81
-        && d.selected is list && d.selected.size() > 0 && d.selected.size() <= 81
+        && d.selected is list && d.selected.size() <= 81
         && d.anchor is int && d.anchor >= 0 && d.anchor < 81
         && d.mode in ['normal', 'corner', 'centre', 'colour']
         && d.history is list && d.history.size() <= 80

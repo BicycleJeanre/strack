@@ -27,6 +27,8 @@ Multi-cell notes use one selection-wide toggle: if any selected cell is missing 
 
 The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. Selecting another cell or entering another digit updates that highlight.
 
+Once all nine instances of a digit are placed, its number-pad button turns grey. Clearing or undoing one of those values restores the button immediately; the grey state is informational and does not block note entry or corrections.
+
 Given and entered values share the normal cell background. The separate peer shade identifies the selected cell's row, column, and box without implying that filled cells have a special state.
 
 ## Keyboard shortcuts

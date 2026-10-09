@@ -205,6 +205,7 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .number-pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
 .number-pad button { min-height: 54px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-raised); color: var(--accent); font-size: 21px; font-weight: 750; }
 .number-pad button.active-digit { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 -3px var(--accent); }
+.number-pad button.complete-digit { border-color: var(--border); background: var(--panel-soft); color: var(--muted); box-shadow: none; opacity: .45; filter: grayscale(1); }
 .number-pad .clear-key { grid-column: 5; grid-row: 1 / span 2; color: var(--muted); font-size: 11px; }
 .colour-pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .colour-pad button { display: grid; min-height: 54px; place-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-raised); }

@@ -69,6 +69,10 @@ export function setMode(game: Game, mode: EntryMode) {
   game.mode = mode;
 }
 
+export function digitIsComplete(values: string[], digit: number) {
+  return values.filter((value) => value === String(digit)).length >= 9;
+}
+
 export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
   const editable = game.selected.filter((cell) => game.puzzle.givens[cell] === "0");
   if (!editable.length) return;

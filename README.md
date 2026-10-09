@@ -60,6 +60,8 @@ Before relying on a release on a real phone, smoke-test installation from HTTPS,
 
 The deployment requires the four public Firebase web identifiers as Actions secrets: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Firestore Rules keep every `users/{uid}` game and settings document private to that authenticated user. `npm run test:rules` validates isolation, and `npm run test:cloud` proves a puzzle started in one browser context resumes in another through the local Auth/Firestore emulators.
 
+The required pull-request check stays intentionally lean: catalogue integrity, unit tests, Firestore rules, and the production Pages build/base path. The Chromium/WebKit UI suite and emulator-backed cloud journey remain available as explicit pre-release or local checks without downloading browser engines on every push.
+
 When `firestore.rules` changes, deploy it separately with `npx firebase deploy --only firestore:rules --project strack-bicycle` before publishing the matching Pages release. The Pages workflow does not authenticate to Firebase or deploy backend rules.
 
 ## Local data and privacy

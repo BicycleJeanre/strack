@@ -288,10 +288,23 @@ dialog::backdrop { background: #020607b8; backdrop-filter: blur(4px); }
   .recent-list { grid-template-columns: 1fr 1fr; }.recent-card { min-height: 102px; }
   .filters { gap: 8px; padding: 10px; }.library-summary { align-items: flex-start; }.library-summary p { margin: 7px 0; }
   .puzzle-card { min-height: 115px; padding: 14px; }.puzzle-card h2 { font-size: 15px; }
-  .player-meta { margin-bottom: 8px; }.player-layout { gap: 12px; }
+  main.player-main { padding-top: 8px; }
+  .player-main .page-heading { display: none; }
+  .player-meta { min-height: 40px; margin: 0 0 2px; gap: 8px; }
+  .player-meta .back-button { min-height: 36px; }
+  .player-meta .info-button { width: 34px; height: 34px; }
+  .player-layout { gap: 8px; }
+  .board-column { width: 100%; }
+  .board-status { min-height: 22px; }
   .sudoku-board { border-width: 2px; border-radius: 4px; }
-  .controls { gap: 8px; }.toolbar button { min-height: 48px; font-size: 18px; }
-  .number-pad button { min-height: 49px; }
+  .controls { gap: 6px; }
+  .toolbar { gap: 5px; }
+  .toolbar button { min-height: 44px; font-size: 17px; }
+  .toolbar small { margin-top: 1px; font-size: 8px; }
+  .mode-switch button { min-height: 38px; }
+  .number-pad { gap: 5px; }
+  .number-pad button { min-height: 42px; }
+  .number-pad .clear-key { min-height: 38px; }
   .cell-value { font-size: clamp(18px, 7cqw, 29px); }.corner-marks { top: 2px; left: 2px; right: 2px; }.colour-cue { width: 6px; height: 6px; right: 2px; bottom: 2px; }
   .control-help { display: none; }.split-layout, .settings-grid { grid-template-columns: 1fr; }
   .account-card { grid-column: auto; }.account-card form { grid-template-columns: 1fr; }.account-card form .actions, .account-card form .text-button, .account-card form #account-feedback { grid-column: auto; }

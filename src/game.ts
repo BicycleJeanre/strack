@@ -73,12 +73,13 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
   const editable = game.selected.filter((cell) => game.puzzle.givens[cell] === "0");
   if (!editable.length) return;
   const mode = game.mode === "normal" && editable.length > 1 ? "corner" : game.mode;
+  const removeNote = mode === "corner" || mode === "centre"
+    ? editable.every((cell) => (mode === "corner" ? game.corner[cell] : game.centre[cell]).includes(digit))
+    : false;
   startChange(game);
   for (const cell of editable) {
     if (mode === "normal") {
       game.values[cell] = String(digit);
-      game.corner[cell] = [];
-      game.centre[cell] = [];
       game.eliminated[cell] = [];
       if (cleanCandidates) {
         for (const peer of peers[cell]) {
@@ -87,11 +88,10 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
         }
       }
     } else if (mode === "corner" || mode === "centre") {
-      if (game.values[cell]) continue;
       const marks = mode === "corner" ? game.corner[cell] : game.centre[cell];
       const index = marks.indexOf(digit);
-      if (index >= 0) marks.splice(index, 1);
-      else marks.push(digit);
+      if (removeNote && index >= 0) marks.splice(index, 1);
+      else if (!removeNote && index < 0) marks.push(digit);
       marks.sort();
     }
   }

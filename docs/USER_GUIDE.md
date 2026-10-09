@@ -11,7 +11,7 @@ Every bundled puzzle works offline after the first successful production load. T
 Select a cell, choose an entry mode, then choose a number:
 
 - **Digit** enters an answer.
-- **Corner** stores small Snyder-style marks around the cell.
+- **Corner** stores small Snyder-style marks around the cell. If the cell also has an answer, its corner notes remain visible in a compact cluster at the corner instead of being discarded.
 - **Centre** stores a compact candidate list in the middle. Corner and centre marks are separate and can coexist.
 - **Colour** applies one of six cell shades. Each coloured cell also has a bordered dot, so the state is not conveyed by colour alone.
 
@@ -19,7 +19,11 @@ Turn on **Multi-select** to add or remove individual cells from the selection. O
 
 Given cells cannot be changed. If **Clean notes after entry** is on, entering a final digit removes it from corner and centre notes in peer cells.
 
+Entering a final digit does not erase that cell's own corner or centre notes. Notes remain independently editable so a cell can retain both its entered value and its notation.
+
 When several cells are selected, entering a digit from normal **Digit** mode defaults to corner notation across those cells. Explicit **Corner** and **Centre** modes keep their usual behavior.
+
+Multi-cell notes use one selection-wide toggle: if any selected cell is missing the digit, STrack adds it to every selected cell. A second press removes it from every selected cell only once all of them contain it. Mixed selections therefore converge instead of swapping notes between cells.
 
 The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. Selecting another cell or entering another digit updates that highlight.
 

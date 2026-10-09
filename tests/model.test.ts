@@ -51,6 +51,28 @@ test("separate notation modes, multi-cell entry, candidate cleanup, undo and red
   assert.deepEqual(game.corner[2], [4, 5]);
 });
 
+test("notes coexist with cell values and multi-cell toggles converge before removing", () => {
+  const game = createGame(fixture, 1);
+  selectCell(game, 2);
+  setMode(game, "corner");
+  enterDigit(game, 4);
+  setMode(game, "normal");
+  enterDigit(game, 5);
+  assert.equal(game.values[2], "5");
+  assert.deepEqual(game.corner[2], [4]);
+
+  setMode(game, "corner");
+  enterDigit(game, 6);
+  assert.deepEqual(game.corner[2], [4, 6], "notes remain editable on a cell with a value");
+  selectCell(game, 3, true);
+  enterDigit(game, 4);
+  assert.deepEqual(game.corner[2], [4, 6]);
+  assert.deepEqual(game.corner[3], [4], "a mixed selection adds the note to every cell");
+  enterDigit(game, 4);
+  assert.deepEqual(game.corner[2], [6]);
+  assert.deepEqual(game.corner[3], [], "only a uniform selection removes the note from every cell");
+});
+
 test("catalogue has 20 valid, rated, provenance-complete puzzles in every band", async () => {
   const puzzles = JSON.parse(await readFile(new URL("../src/data/puzzles.json", import.meta.url), "utf8")) as Puzzle[];
   assert.equal(puzzles.length, 80);

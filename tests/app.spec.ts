@@ -65,6 +65,25 @@ test("dragging across cells paints a multi-cell selection while clicks stay sing
   await expect(page.locator(".sudoku-cell.selected")).toHaveCount(1);
 });
 
+test("the last entered digit remains active and highlights matching grid values", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const digit = await page.locator(".sudoku-cell.given .cell-value").first().textContent();
+  expect(digit).toMatch(/^[1-9]$/);
+  const empty = page.locator(".sudoku-cell:not(.given)");
+
+  await empty.nth(0).click();
+  await page.getByRole("button", { name: digit!, exact: true }).click();
+  await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
+  expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThan(1);
+
+  await page.getByRole("button", { name: "Corner" }).click();
+  await empty.nth(1).click();
+  await page.getByRole("button", { name: digit!, exact: true }).click();
+  await expect(empty.nth(1).locator(".corner-marks")).toContainText(digit!);
+  await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
+  expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThan(0);
+});
+
 test("hints can show answers, be dismissed, and remain available in history", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   await page.getByRole("button", { name: "Get a logical hint" }).click();

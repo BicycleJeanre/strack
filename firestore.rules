@@ -38,7 +38,7 @@ service cloud.firestore {
     function validSettings() {
       let d = request.resource.data;
       return d.keys().hasAll(['version', 'preferences', 'activeGameId', 'updatedAt'])
-        && d.keys().hasOnly(['version', 'preferences', 'activeGameId', 'updatedAt'])
+        && d.keys().hasOnly(['version', 'preferences', 'activeGameId', 'deletedGames', 'updatedAt'])
         && d.version == 1
         && d.preferences is map
         && d.preferences.keys().hasAll(['theme', 'showTimer', 'autoCandidates', 'cleanCandidates', 'highlightPeers', 'highlightMatches', 'showMistakes'])
@@ -50,6 +50,7 @@ service cloud.firestore {
         && d.preferences.highlightPeers is bool
         && d.preferences.highlightMatches is bool
         && d.preferences.showMistakes is bool
+        && (!('deletedGames' in d) || (d.deletedGames is map && d.deletedGames.size() <= 500))
         && (d.activeGameId == null || validId(d.activeGameId))
         && d.updatedAt is number && d.updatedAt > 0;
     }

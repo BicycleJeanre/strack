@@ -41,8 +41,9 @@ test("rules reject malformed games and unauthenticated writes", async () => {
 
 test("owners can store validated private settings", async () => {
   const owner = environment.authenticatedContext("owner").firestore();
-  const settings = { version: 1, preferences: { theme: "system", showTimer: true, autoCandidates: false, cleanCandidates: true, highlightPeers: true, highlightMatches: true, showMistakes: false }, activeGameId: "game-1", updatedAt: 2 };
+  const settings = { version: 1, preferences: { theme: "system", showTimer: true, autoCandidates: false, cleanCandidates: true, highlightPeers: true, highlightMatches: true, showMistakes: false }, activeGameId: "game-1", deletedGames: { "old-game": 1 }, updatedAt: 2 };
   await assertSucceeds(setDoc(doc(owner, "users/owner/meta/settings"), settings));
   const snapshot = await getDoc(doc(owner, "users/owner/meta/settings"));
   assert.equal(snapshot.data().activeGameId, "game-1");
+  assert.equal(snapshot.data().deletedGames["old-game"], 1);
 });

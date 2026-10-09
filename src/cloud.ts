@@ -121,9 +121,11 @@ export function decodeCloudGame(value: unknown): Game | null {
   return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), eliminated: decodeMarks(game.eliminated), history: history as BoardSnapshot[], future: future as BoardSnapshot[], hintHistory };
 }
 
-function validSettings(value: unknown): value is { preferences: Preferences; activeGameId: string | null; updatedAt: number } {
-  const settings = value as { preferences: Preferences; activeGameId: string | null; updatedAt: number };
-  return Boolean(settings && typeof settings.preferences === "object" && typeof settings.updatedAt === "number");
+type CloudSettings = { preferences: Preferences; activeGameId: string | null; deletedGames?: Record<string, number>; updatedAt: number };
+
+function validSettings(value: unknown): value is CloudSettings {
+  const settings = value as CloudSettings;
+  return Boolean(settings && typeof settings.preferences === "object" && typeof settings.updatedAt === "number" && (!settings.deletedGames || typeof settings.deletedGames === "object"));
 }
 
 export class CloudSync {
@@ -180,8 +182,9 @@ export class CloudSync {
     this.working = true;
     this.changed();
     try {
-      for (const game of Object.values(this.store.data.games)) await this.syncGame(game);
       await this.syncSettings();
+      for (const id of Object.keys(this.store.data.deletedGames)) if (!await this.deleteGame(id)) throw new Error("Cloud deletion failed");
+      for (const game of Object.values(this.store.data.games)) await this.syncGame(game);
       this.error = "";
     } catch {
       this.fail();
@@ -208,24 +211,33 @@ export class CloudSync {
   }
 
   async deleteGame(id: string) {
-    if (!this.user || !database) return;
+    if (!this.user || !database) return true;
     try {
       await deleteDoc(doc(database, "users", this.user.uid, "games", id));
       this.error = "";
+      return true;
     } catch {
       this.fail();
+      return false;
     }
   }
 
   async syncSettings() {
     if (!this.user || !database || !this.store.data.settingsUpdatedAt) return;
     const reference = doc(database, "users", this.user.uid, "meta", "settings");
-    const settings = { version: 1, preferences: this.store.data.preferences, activeGameId: this.store.data.activeGameId, updatedAt: this.store.data.settingsUpdatedAt };
+    const settings = { version: 1, preferences: this.store.data.preferences, activeGameId: this.store.data.activeGameId, deletedGames: this.store.data.deletedGames, updatedAt: this.store.data.settingsUpdatedAt };
     try {
       await runTransaction(database, async (transaction) => {
         const remote = await transaction.get(reference);
         const remoteData = remote.data();
-        if (!remote.exists() || !validSettings(remoteData) || remoteData.updatedAt < settings.updatedAt) transaction.set(reference, settings);
+        const remoteDeletions = validSettings(remoteData) ? remoteData.deletedGames || {} : {};
+        const deletedGames = { ...remoteDeletions };
+        for (const [id, deletedAt] of Object.entries(settings.deletedGames)) deletedGames[id] = Math.max(deletedAt, deletedGames[id] || 0);
+        const tombstonesChanged = Object.keys(deletedGames).some((id) => deletedGames[id] !== remoteDeletions[id]);
+        const newest = validSettings(remoteData) && remoteData.updatedAt >= settings.updatedAt
+          ? { version: 1, preferences: remoteData.preferences, activeGameId: remoteData.activeGameId, updatedAt: remoteData.updatedAt }
+          : settings;
+        if (!remote.exists() || !validSettings(remoteData) || remoteData.updatedAt < settings.updatedAt || tombstonesChanged) transaction.set(reference, { ...newest, deletedGames });
       });
       this.error = "";
     } catch {

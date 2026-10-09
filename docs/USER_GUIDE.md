@@ -87,6 +87,8 @@ Validation happens on the device. A copied share link stores only the givens in 
 
 Settings include system/light/dark theme, timer visibility, automatic candidates, note cleanup, peer highlights, matching-digit highlights, and optional mistake cues. Mistakes receive an outline and `!` marker in addition to colour.
 
+The top-right **Settings & help** button is a toggle. Select it again to close the menu and return to the screen you opened it from, including an active puzzle.
+
 STrack saves edits to IndexedDB on this device before attempting cloud synchronization. JSON backup import validates the file, adds missing game IDs, preserves existing games, and imports preferences. Reset actions are separately scoped to the current puzzle, completed history, or all local data.
 
 ### Continue between a PC and phone

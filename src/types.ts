@@ -60,6 +60,7 @@ export interface AppData {
   settingsUpdatedAt: number;
   preferences: Preferences;
   games: Record<string, Game>;
+  deletedGames: Record<string, number>;
   activeGameId: string | null;
 }
 

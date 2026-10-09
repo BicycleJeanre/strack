@@ -18,6 +18,19 @@ test("home, library and puzzle details expose the offline catalogue and SE prove
   await expect(page.getByRole("dialog")).toContainText("not a universal or official difficulty scale");
 });
 
+test("the settings menu toggles back to the screen it opened from", async ({ page }) => {
+  await page.getByRole("button", { name: "Settings and help" }).click();
+  await expect(page.getByRole("heading", { name: "Settings & help" })).toBeVisible();
+  await page.getByRole("button", { name: "Close settings and help" }).click();
+  await expect(page.getByRole("heading", { name: /Good/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  await expect(page.getByRole("grid", { name: "Sudoku board" })).toBeVisible();
+  await page.getByRole("button", { name: "Settings and help" }).click();
+  await page.getByRole("button", { name: "Close settings and help" }).click();
+  await expect(page.getByRole("grid", { name: "Sudoku board" })).toBeVisible();
+});
+
 test("normal, corner, centre, colour, multi-select, undo and keyboard flows work", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const empty = page.locator(".sudoku-cell:not(.given)");

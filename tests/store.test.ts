@@ -40,3 +40,31 @@ test("cloud merge keeps the newest puzzle and settings versions", async () => {
   assert.equal(await store.mergeCloudSettings({ preferences: remotePreferences, activeGameId: local.id, updatedAt: store.data.settingsUpdatedAt + 10 }), true);
   assert.equal(store.data.preferences.theme, "dark");
 });
+
+test("deleted puzzles stay deleted when a stale cloud game arrives", async () => {
+  const { Store } = await import("../src/store.ts");
+  const store = new Store();
+  await store.clear("all");
+  const game = createGame(puzzle, 400);
+  await store.putGame(game);
+  await store.removeGame(game.id, 500);
+  assert.equal(store.activeGame(), null);
+  assert.equal(store.data.deletedGames[game.id], 500);
+
+  const staleCloudCopy = structuredClone(game);
+  staleCloudCopy.updatedAt = 600;
+  assert.equal(await store.mergeCloudGame(staleCloudCopy), false);
+  assert.equal(store.data.games[game.id], undefined);
+
+  const otherDevice = new Store();
+  await otherDevice.clear("all");
+  await otherDevice.putGame(structuredClone(staleCloudCopy));
+  assert.equal(await otherDevice.mergeCloudSettings({
+    preferences: otherDevice.data.preferences,
+    activeGameId: game.id,
+    deletedGames: { [game.id]: 500 },
+    updatedAt: 500,
+  }), true);
+  assert.equal(otherDevice.activeGame(), null);
+  assert.equal(otherDevice.data.games[game.id], undefined);
+});

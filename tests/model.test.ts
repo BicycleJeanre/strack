@@ -51,7 +51,7 @@ test("separate notation modes, multi-cell entry, candidate cleanup, undo and red
   assert.deepEqual(game.corner[2], [4, 5]);
 });
 
-test("notes coexist with cell values and multi-cell toggles converge before removing", () => {
+test("normal values replace notes and later multi-cell note toggles converge before removing", () => {
   const game = createGame(fixture, 1);
   selectCell(game, 2);
   setMode(game, "corner");
@@ -59,11 +59,11 @@ test("notes coexist with cell values and multi-cell toggles converge before remo
   setMode(game, "normal");
   enterDigit(game, 5);
   assert.equal(game.values[2], "5");
-  assert.deepEqual(game.corner[2], [4]);
+  assert.deepEqual(game.corner[2], []);
 
   setMode(game, "corner");
   enterDigit(game, 6);
-  assert.deepEqual(game.corner[2], [4, 6], "notes remain editable on a cell with a value");
+  assert.deepEqual(game.corner[2], [6], "notes remain editable on a cell with a value");
   selectCell(game, 3, true);
   enterDigit(game, 4);
   assert.deepEqual(game.corner[2], [4, 6]);
@@ -96,14 +96,14 @@ test("all candidates replace corner notes with centre notes and are undone toget
   assert.deepEqual(game.centre[2], []);
 });
 
-test("entering a value clears centre notes but retains corner notes", () => {
+test("entering a value clears both corner and centre notes", () => {
   const game = createGame(fixture, 1);
   selectCell(game, 2);
   game.corner[2] = [4];
   game.centre[2] = [1, 2, 4];
   enterDigit(game, 5);
   assert.equal(game.values[2], "5");
-  assert.deepEqual(game.corner[2], [4]);
+  assert.deepEqual(game.corner[2], []);
   assert.deepEqual(game.centre[2], []);
 });
 

@@ -8,10 +8,10 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 
 - 80 public-domain, uniquely solvable puzzles: 20 each in Easy, Medium, Hard, and Diabolical.
 - Exact `SE` ratings, friendly bands, stable source IDs, catalogue version, and provenance visible for every bundled puzzle.
-- Normal digits with warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, six cell colours, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
+- Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, six cell colours, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
 - Progressive hints that identify evidence, name and explain the technique, optionally show the exact answer, keep dismissible per-puzzle history, and wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
-- Automatic candidates, multi-digit placed-value and note-level matching highlights, completed-digit number-pad cues, candidate cleanup, optional mistake cues, pause, optional timer, and light/dark/system themes.
+- Automatic candidates, an explicit multi-value highlight mode for placed values and notes, completed-digit number-pad cues, candidate cleanup, optional mistake cues, completion fanfare, pause, optional timer, and light/dark/system themes.
 - IndexedDB save/resume, separate in-progress and completed sections, per-puzzle deletion, non-destructive JSON backup import, and scoped reset controls.
 - Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device progress/preferences.
 - Local puzzle import with shape, conflict, solution, and uniqueness checks plus URL-only sharing.

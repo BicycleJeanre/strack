@@ -227,10 +227,10 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
   await page.getByRole("button", { name: "Digit" }).click();
   await page.getByRole("button", { name: "5", exact: true }).click();
   await expect(empty.nth(0).locator(".cell-value")).toHaveText("5");
-  await expect(empty.nth(0).locator(".corner-marks")).toContainText("4");
+  await expect(empty.nth(0).locator(".corner-marks")).toHaveCount(0);
   await expect(empty.nth(0).locator(".centre-marks")).toHaveCount(0);
   await expect(empty.nth(0)).toHaveClass(/has-value/);
-  await expect(empty.nth(0)).toHaveClass(/has-corner/);
+  await expect(empty.nth(0)).not.toHaveClass(/has-corner/);
   expect(await cell.locator(".cell-value").evaluate((element) => getComputedStyle(element).position)).toBe("relative");
 
   await page.getByRole("button", { name: "Corner", exact: true }).click();
@@ -244,12 +244,12 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
   await expect(empty.nth(1).locator(".corner-marks")).toHaveCount(0);
 });
 
-test("clicking outside the grid deselects cells and enables multi-digit highlighting", async ({ page }) => {
+test("highlight mode selects multiple values and clicking outside clears every highlight", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   await expect(page.locator(".sudoku-cell.selected")).toHaveCount(1);
-  await page.locator(".board-status").click();
+  await page.getByRole("button", { name: "Highlight multiple values" }).click();
   await expect(page.locator(".sudoku-cell.selected")).toHaveCount(0);
-  await expect(page.getByText("No cells selected · tap any digits to highlight them together.")).toBeVisible();
+  await expect(page.getByText("Highlight mode · tap several digits to compare them together.")).toBeVisible();
 
   const values = await page.locator(".sudoku-cell.given .cell-value").allTextContents();
   const digits = [...new Set(values)].slice(0, 2);
@@ -257,6 +257,23 @@ test("clicking outside the grid deselects cells and enables multi-digit highligh
   for (const digit of digits) await page.locator(`[data-digit="${digit}"]`).click();
   for (const digit of digits) await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
   expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThanOrEqual(2);
+  await page.locator(".controls").dispatchEvent("click");
+  for (const digit of digits) await expect(page.locator(`[data-digit="${digit}"]`)).not.toHaveClass(/active-digit/);
+  await expect(page.locator(".sudoku-cell.match")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Highlight multiple values" })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("solving the puzzle triggers a reduced-motion-safe completion celebration", async ({ page }) => {
+  const nearlySolved = "534678912672195348198342567859761423426853791713924856961537284287419635345286170";
+  await page.getByRole("button", { name: "Open" }).click();
+  await page.getByLabel("81-character puzzle").fill(nearlySolved);
+  await page.getByRole("button", { name: "Validate puzzle" }).click();
+  await page.getByRole("button", { name: "Play now" }).click();
+  await page.getByRole("button", { name: "9", exact: true }).click();
+  await expect(page.getByText("Puzzle complete!", { exact: true })).toBeVisible();
+  await expect(page.locator(".sudoku-board")).toHaveClass(/celebrating/);
+  await expect(page.locator(".completion-confetti i")).toHaveCount(14);
+  expect(await page.locator(".completion-banner").evaluate((element) => getComputedStyle(element).animationName)).toBe("completion-arrive");
 });
 
 test("number-pad digits grey out after all nine are placed and recover on undo", async ({ page }) => {

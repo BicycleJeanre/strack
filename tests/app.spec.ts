@@ -175,9 +175,22 @@ test("selecting a placed value highlights matching corner and centre notes", asy
 
   const matchingValue = page.locator(".sudoku-cell.given").filter({ has: page.locator(`.cell-value:text-is("${digit}")`) }).first();
   await matchingValue.click();
-  await expect(empty.nth(0).locator(".corner-marks .note-match")).toHaveText(digit!);
-  await expect(empty.nth(1).locator(".centre-marks .note-match")).toHaveText(digit!);
+  const cornerMatch = empty.nth(0).locator(".corner-marks .note-match");
+  const centreMatch = empty.nth(1).locator(".centre-marks .note-match");
+  await expect(cornerMatch).toHaveText(digit!);
+  await expect(centreMatch).toHaveText(digit!);
   expect(await page.locator(".note-match").count()).toBeGreaterThanOrEqual(2);
+  const matchStyles = await Promise.all([cornerMatch, centreMatch].map((match) => match.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { color: style.color, background: style.backgroundColor, outline: style.outlineStyle, transform: style.transform, weight: Number(style.fontWeight) };
+  })));
+  expect(matchStyles[0].color).not.toBe(matchStyles[1].color);
+  for (const style of matchStyles) {
+    expect(style.background).toBe("rgba(0, 0, 0, 0)");
+    expect(style.outline).toBe("solid");
+    expect(style.transform).not.toBe("none");
+    expect(style.weight).toBeGreaterThanOrEqual(900);
+  }
 });
 
 test("selecting a placed value highlights matching automatic candidates", async ({ page }) => {
@@ -191,6 +204,24 @@ test("selecting a placed value highlights matching automatic candidates", async 
   const matches = page.locator(".centre-marks.auto .note-match");
   expect(await matches.count()).toBeGreaterThan(0);
   await expect(matches.first()).toHaveText(digit!);
+  expect(await matches.first().evaluate((element) => getComputedStyle(element).opacity)).toBe("1");
+});
+
+test("the number buttons form a three by three keypad", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const digits = page.locator("[data-digit]");
+  await expect(digits).toHaveCount(9);
+  const layout = await digits.evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { left: Math.round(box.left), top: Math.round(box.top), width: box.width };
+  }));
+  const columns = [...new Set(layout.map((box) => box.left))];
+  const rows = [...new Set(layout.map((box) => box.top))];
+  expect(columns).toHaveLength(3);
+  expect(rows).toHaveLength(3);
+  for (const row of rows) expect(layout.filter((box) => box.top === row)).toHaveLength(3);
+  const clearWidth = (await page.getByRole("button", { name: "Clear" }).boundingBox())!.width;
+  expect(clearWidth).toBeGreaterThan(layout[0].width * 2.8);
 });
 
 test("corner notes remain separate from cell values and multi-cell toggles converge", async ({ page }) => {

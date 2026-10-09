@@ -27,7 +27,7 @@ Multi-cell notes use one selection-wide toggle: if any selected cell is missing 
 
 **Calculate all candidates** removes corner notes and writes the candidates currently allowed by each empty editable cell's row, column, box, and recorded eliminations as centre notes. The entire calculation is one undoable action.
 
-The most recently entered digit stays active on the number pad and highlights matching placed values in the grid. The same digit is also accented wherever it appears in corner notes, centre notes, or automatic candidates. Turn on **Highlight values** to deselect cells and make number-pad digits toggle independently, allowing several values to be highlighted together without changing the puzzle. Clicking blank space outside the grid and buttons clears the cell selection, highlight mode, and every active value highlight.
+The number buttons use a 3×3 keypad. The most recently entered digit stays active and highlights matching placed values in the grid. Matching corner, centre, and automatic candidate notes keep their original warm or cool text color and gain a larger circular outline plus heavier type, so highlighting never covers the value. Turn on **Highlight values** to deselect cells and make keypad digits toggle independently, allowing several values to be highlighted together without changing the puzzle. Clicking blank space outside the grid and buttons clears the cell selection, highlight mode, and every active value highlight.
 
 Solving the final cell triggers a short board pulse, animated completion banner, confetti, and a gentle vibration on supported devices. Reduced-motion preferences shorten these effects to an effectively static confirmation.
 

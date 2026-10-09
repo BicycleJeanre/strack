@@ -42,6 +42,7 @@ export function createGame(puzzle: Puzzle, now = Date.now()): Game {
     paused: false,
     hintStage: "none",
     hintId: null,
+    hintHistory: [],
   };
 }
 
@@ -71,9 +72,10 @@ export function setMode(game: Game, mode: EntryMode) {
 export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
   const editable = game.selected.filter((cell) => game.puzzle.givens[cell] === "0");
   if (!editable.length) return;
+  const mode = game.mode === "normal" && editable.length > 1 ? "corner" : game.mode;
   startChange(game);
   for (const cell of editable) {
-    if (game.mode === "normal") {
+    if (mode === "normal") {
       game.values[cell] = String(digit);
       game.corner[cell] = [];
       game.centre[cell] = [];
@@ -84,9 +86,9 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true) {
           game.centre[peer] = game.centre[peer].filter((value) => value !== digit);
         }
       }
-    } else if (game.mode === "corner" || game.mode === "centre") {
+    } else if (mode === "corner" || mode === "centre") {
       if (game.values[cell]) continue;
-      const marks = game.mode === "corner" ? game.corner[cell] : game.centre[cell];
+      const marks = mode === "corner" ? game.corner[cell] : game.centre[cell];
       const index = marks.indexOf(digit);
       if (index >= 0) marks.splice(index, 1);
       else marks.push(digit);

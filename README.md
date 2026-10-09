@@ -8,9 +8,9 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 
 - 80 public-domain, uniquely solvable puzzles: 20 each in Easy, Medium, Hard, and Diabolical.
 - Exact `SE` ratings, friendly bands, stable source IDs, catalogue version, and provenance visible for every bundled puzzle.
-- Normal digits, separate corner/Snyder and centre/candidate marks, six cell colours, and additive multi-cell selection.
+- Normal digits, separate corner/Snyder and centre/candidate marks, six cell colours, click-drag multi-cell selection, and automatic corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
-- Progressive hints that identify evidence, name and explain the technique, then wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
+- Progressive hints that identify evidence, name and explain the technique, optionally show the exact answer, keep dismissible per-puzzle history, and wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
 - Automatic candidates, peer and matching-digit highlights, candidate cleanup, optional mistake cues, pause, optional timer, and light/dark/system themes.
 - IndexedDB save/resume, recent completions, non-destructive JSON backup import, and scoped reset controls.
 - Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device progress/preferences.

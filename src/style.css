@@ -166,7 +166,7 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .board-status { display: flex; justify-content: space-between; min-height: 30px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .timer { color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
 .timer.hidden { visibility: hidden; }
-.sudoku-board { position: relative; display: grid; grid-template-columns: repeat(9, 1fr); width: min(100%, 620px); aspect-ratio: 1; overflow: hidden; border: 3px solid var(--board-outer); border-radius: 8px; background: var(--board-line); box-shadow: var(--shadow); }
+.sudoku-board { position: relative; display: grid; grid-template-columns: repeat(9, 1fr); width: min(100%, 620px); aspect-ratio: 1; overflow: hidden; border: 3px solid var(--board-outer); border-radius: 8px; background: var(--board-line); box-shadow: var(--shadow); touch-action: none; user-select: none; }
 .sudoku-cell { position: relative; display: grid; min-width: 0; min-height: 0; place-items: center; padding: 0; border: 0; border-right: 1px solid var(--board-line); border-bottom: 1px solid var(--board-line); background: var(--board); color: var(--board-entry); }
 .sudoku-cell:nth-child(3n) { border-right-width: 3px; }
 .sudoku-cell:nth-child(9n) { border-right: 0; }
@@ -212,6 +212,13 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .quiet-warning { border-color: #eaa94a; }
 .hint-panel { padding: 16px; border: 1px solid #b9852e; border-radius: 10px; background: #e9a93812; }
 .hint-panel p { margin: 6px 0 12px; }.hint-panel .actions { display: flex; gap: 12px; align-items: center; }
+.hint-answer { padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); color: var(--text); }
+.history-button { min-height: 40px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 800; }
+.hint-history { display: grid; gap: 10px; margin-top: 18px; }
+.hint-history article { padding: 15px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-soft); }
+.hint-history article > div { display: flex; justify-content: space-between; gap: 12px; }
+.hint-history small { color: var(--faint); font-size: 9px; }
+.hint-history summary { color: var(--accent); cursor: pointer; font-size: 11px; font-weight: 800; }
 .completion-banner { display: flex; align-items: center; gap: 13px; margin-top: 12px; padding: 13px 16px; border: 1px solid var(--success); border-radius: 10px; background: color-mix(in srgb, var(--success) 9%, var(--panel)); }
 .completion-banner > span { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--success); color: #092117; font-weight: 900; }
 .completion-banner strong, .completion-banner small { display: block; }.completion-banner small { margin-top: 3px; color: var(--muted); }.completion-banner button { margin-left: auto; border: 0; background: transparent; color: var(--accent); font-weight: 800; }

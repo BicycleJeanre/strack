@@ -24,6 +24,11 @@ export function emptyData(): AppData {
   };
 }
 
+function normalizeGame(game: Game): Game {
+  game.hintHistory = Array.isArray(game.hintHistory) ? game.hintHistory : [];
+  return game;
+}
+
 const database = openDB("strack-v1", 1, {
   upgrade(db) {
     db.createObjectStore("state");
@@ -43,6 +48,7 @@ export class Store {
         ...saved,
         settingsUpdatedAt: saved.settingsUpdatedAt || 0,
         preferences: { ...DEFAULT_PREFERENCES, ...saved.preferences },
+        games: Object.fromEntries(Object.entries(saved.games || {}).map(([id, game]) => [id, normalizeGame(game as Game)])),
       };
     }
   }
@@ -73,6 +79,7 @@ export class Store {
   }
 
   async mergeCloudGame(game: Game) {
+    normalizeGame(game);
     const local = this.data.games[game.id];
     if (local && local.updatedAt >= game.updatedAt) return false;
     this.data.games[game.id] = game;
@@ -115,7 +122,7 @@ export class Store {
     for (const [id, game] of Object.entries(parsed.data.games as Record<string, Game>)) {
       if (this.data.games[id]) skipped++;
       else if (game?.puzzle?.givens?.length === 81 && game.values?.length === 81) {
-        this.data.games[id] = game;
+        this.data.games[id] = normalizeGame(game);
         added++;
       } else throw new Error(`Game ${id} is incomplete; nothing was imported.`);
     }

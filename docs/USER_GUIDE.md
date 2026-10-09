@@ -19,6 +19,8 @@ Turn on **Multi-select** to add or remove individual cells from the selection. O
 
 Given cells cannot be changed. If **Clean notes after entry** is on, entering a final digit removes it from corner and centre notes in peer cells.
 
+When several cells are selected, entering a digit from normal **Digit** mode defaults to corner notation across those cells. Explicit **Corner** and **Centre** modes keep their usual behavior.
+
 ## Keyboard shortcuts
 
 | Key | Action |
@@ -37,8 +39,10 @@ Given cells cannot be changed. If **Clean notes after entry** is on, entering a 
 
 1. STrack highlights the evidence and target cells.
 2. It names the technique and explains the deduction in plain language.
-3. **Apply deduction** places the forced value or records candidate eliminations.
-4. **Reveal selected value** remains a separate fallback action.
+3. **Show answer** exposes the exact placement or elimination without changing the grid.
+4. **Apply deduction** places the forced value or records candidate eliminations.
+
+You can **Dismiss hint** without applying it. Each puzzle keeps a private hint notebook; open **Previous hints** to review earlier explanations and reveal their answers again.
 
 Release 1 supports naked and hidden singles, locked candidates, naked pairs, naked triples, and row-based X-Wing eliminations. Every bundled Easy, Medium, and Hard puzzle is automatically verified to have a complete path through this local technique set. Diabolical boards are playable and rated, but can require advanced techniques; their cards say that full hints may be unavailable.
 

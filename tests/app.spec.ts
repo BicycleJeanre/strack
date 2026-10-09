@@ -32,15 +32,57 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
   await empty.nth(1).click();
   await page.getByRole("button", { name: "Digit" }).click();
   await page.keyboard.press("3");
-  await expect(empty.nth(0).locator(".cell-value")).toHaveText("3");
-  await expect(empty.nth(1).locator(".cell-value")).toHaveText("3");
+  await expect(empty.nth(0).locator(".corner-marks")).toContainText("3");
+  await expect(empty.nth(1).locator(".corner-marks")).toContainText("3");
   await page.getByRole("button", { name: "Undo" }).click();
-  await expect(empty.nth(0).locator(".cell-value")).toHaveCount(0);
+  await expect(empty.nth(1).locator(".corner-marks")).toHaveCount(0);
   await page.getByRole("button", { name: "Colour" }).click();
   await page.getByRole("button", { name: "Apply cyan colour" }).click();
   await expect(empty.nth(0)).toHaveClass(/colour-cyan/);
   await page.keyboard.press("Shift+ArrowRight");
   expect(await page.locator(".sudoku-cell.selected").count()).toBeGreaterThan(1);
+});
+
+test("dragging across cells paints a multi-cell selection while clicks stay singular", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const empty = page.locator(".sudoku-cell:not(.given)");
+  const start = await empty.nth(0).boundingBox();
+  const end = await empty.nth(8).boundingBox();
+  expect(start).not.toBeNull();
+  expect(end).not.toBeNull();
+
+  await page.mouse.move(start!.x + start!.width / 2, start!.y + start!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(end!.x + end!.width / 2, end!.y + end!.height / 2, { steps: 12 });
+  await page.mouse.up();
+
+  await expect(empty.nth(0)).toHaveClass(/selected/);
+  await expect(empty.nth(8)).toHaveClass(/selected/);
+  expect(await page.locator(".sudoku-cell.selected").count()).toBeGreaterThan(1);
+
+  await empty.nth(2).click();
+  await expect(empty.nth(2)).toHaveClass(/selected/);
+  await expect(page.locator(".sudoku-cell.selected")).toHaveCount(1);
+});
+
+test("hints can show answers, be dismissed, and remain available in history", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  await page.getByRole("button", { name: "Get a logical hint" }).click();
+  await expect(page.getByRole("button", { name: "Show answer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dismiss hint" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Show answer" }).click();
+  await expect(page.locator(".hint-answer")).toContainText(/(Place|Remove) [1-9]/);
+  await page.getByRole("button", { name: "Dismiss hint" }).click();
+  await expect(page.locator(".hint-panel")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Previous hints (1)" }).click();
+  const history = page.getByRole("dialog");
+  await expect(history).toContainText("Previous hints");
+  await expect(history).toContainText("Dismissed");
+  await history.getByText("Show answer").click();
+  await expect(history.locator(".hint-answer")).toContainText(/(Place|Remove) [1-9]/);
+  await history.getByRole("button", { name: "Close history" }).click();
 });
 
 test("settings persist theme and help explains notation, ratings, offline use and backups", async ({ page }) => {

@@ -62,7 +62,11 @@ export interface Preferences {
   showMistakes: boolean;
 }
 
-export type TrainingTechniqueId = "naked-single" | "hidden-single" | "locked-candidates" | "naked-pair" | "naked-triple" | "x-wing";
+export type TrainingTechniqueId =
+  | "naked-single" | "hidden-single" | "locked-candidates" | "naked-pair" | "naked-triple"
+  | "x-wing" | "swordfish" | "jellyfish" | "skyscraper" | "two-string-kite"
+  | "xy-wing" | "xyz-wing" | "w-wing" | "simple-coloring" | "x-chain"
+  | "xy-chain" | "aic" | "unique-rectangle" | "als-xz" | "forcing-chain";
 
 export interface TrainingTechniqueProgress {
   attempts: number;

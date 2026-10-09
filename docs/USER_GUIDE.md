@@ -8,11 +8,13 @@ Every bundled puzzle works offline after the first successful production load. T
 
 ## Technique training
 
-Open **Train** to follow a progressive curriculum from singles through intersections, subsets, and X-Wing. The first six lessons are available entirely offline: naked single, hidden single, locked candidates, naked pair, naked triple, and X-Wing. The roadmap also shows the planned path into fish, wings, coloring, chains, uniqueness, ALS, and forcing techniques as their local detectors are added.
+Open **Train** to follow a 20-technique curriculum from singles to expert forcing logic. It includes naked and hidden singles; locked candidates; naked pairs and triples; X-Wing, Swordfish, and Jellyfish; Skyscraper and two-string kite; XY-, XYZ-, and W-Wings; simple coloring; X-Chains, XY-Chains, and alternating inference chains; unique rectangles; ALS-XZ; and forcing chains.
+
+The six techniques supported by the puzzle hint engine use positions extracted from the documented bundled catalogue. Advanced lessons use original, purpose-built candidate diagrams so the pattern stays legible and every relevant candidate is visible without unrelated puzzle noise. Chain diagrams draw solid strong links and dashed weak links. Both lesson types are bundled and work offline.
 
 Every available lesson uses a genuine position derived from the bundled, documented puzzle catalogue and has four stages:
 
-1. **Learn** explains the pattern on a fully marked example.
+1. **Learn** explains the pattern on a fully marked example. For advanced chains, the link path is drawn directly on the grid.
 2. **Find** removes the answer markings and asks you to select the cells that make the pattern. **Show a clue** identifies those cells without revealing the candidate deduction.
 3. **Deduce** asks you to choose the candidate to place or eliminate. **Show the answer** is an explicit fallback and never changes a puzzle.
 4. **Complete** records the session and offers repetition or the next technique.

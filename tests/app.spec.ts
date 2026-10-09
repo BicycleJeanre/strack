@@ -59,6 +59,7 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
 test("all candidates replace corner notes with centre notes as one undoable action", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const empty = page.locator(".sudoku-cell:not(.given):not(.has-value)");
+  await expect(empty.first()).toBeVisible();
   const emptyCount = await empty.count();
   await empty.first().click();
   await page.getByRole("button", { name: "Corner", exact: true }).click();

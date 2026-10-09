@@ -14,8 +14,15 @@ test("a signed-in puzzle session continues on a second device", async ({ browser
   await first.getByRole("button", { name: "STrack home" }).click();
   await first.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const firstEmpty = first.locator(".sudoku-cell:not(.given)").first();
+  const secondEmpty = first.locator(".sudoku-cell:not(.given)").nth(1);
   await firstEmpty.click();
   await first.keyboard.press("1");
+  await first.getByRole("button", { name: "Colour" }).click();
+  await first.getByRole("button", { name: "Toggle cyan cell colour" }).click();
+  await first.getByRole("button", { name: "Toggle amber cell colour" }).click();
+  await first.getByRole("button", { name: "Lines" }).click();
+  await first.getByRole("button", { name: "Use rose line colour" }).click();
+  await firstEmpty.dragTo(secondEmpty);
   await first.getByRole("button", { name: "Settings and help" }).click();
   await expect(first.locator("[data-cloud-status]").filter({ hasText: "Synced" }).first()).toBeVisible();
 
@@ -31,6 +38,8 @@ test("a signed-in puzzle session continues on a second device", async ({ browser
   await expect(second.getByRole("button", { name: /Resume puzzle/ })).toBeVisible();
   await second.getByRole("button", { name: /Resume puzzle/ }).click();
   await expect(second.locator(".sudoku-cell:not(.given)").first().locator(".cell-value")).toHaveText("1");
+  await expect(second.locator(".sudoku-cell:not(.given)").first().locator(".cell-colours i")).toHaveCount(2);
+  await expect(second.locator(".annotation-line.colour-rose:not(.preview)")).toHaveCount(1);
 
   await first.getByRole("button", { name: "STrack home" }).click();
   await first.getByRole("button", { name: /Delete recent Easy puzzle/ }).click();

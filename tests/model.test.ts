@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, undo } from "../src/game.ts";
+import { applyColour, clearColours, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
 import { applyHint as applyLogicalHint, candidateList, findHint, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
 
@@ -105,6 +105,35 @@ test("entering a value clears both corner and centre notes", () => {
   assert.equal(game.values[2], "5");
   assert.deepEqual(game.corner[2], []);
   assert.deepEqual(game.centre[2], []);
+});
+
+test("cells retain multiple colours and coloured lines participate in undo and redo", () => {
+  const game = createGame(fixture, 1);
+  selectCell(game, 2);
+  applyColour(game, "cyan");
+  applyColour(game, "amber");
+  applyColour(game, "indigo");
+  assert.deepEqual(game.colours[2], ["cyan", "amber", "indigo"]);
+  applyColour(game, "cyan");
+  assert.deepEqual(game.colours[2], ["amber", "indigo"], "a repeated colour removes only itself");
+  selectCell(game, 3, true);
+  applyColour(game, "rose");
+  assert.deepEqual(game.colours[2], ["amber", "indigo", "rose"]);
+  assert.deepEqual(game.colours[3], ["rose"]);
+  assert.equal(clearColours(game), true);
+  assert.deepEqual(game.colours[2], []);
+  assert.deepEqual(game.colours[3], []);
+
+  assert.equal(toggleLine(game, 2, 12, "violet"), true);
+  assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "violet" }]);
+  assert.equal(toggleLine(game, 12, 2, "orange"), true);
+  assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "orange" }], "redrawing with another colour recolours the connection");
+  assert.equal(undo(game), true);
+  assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "violet" }]);
+  assert.equal(redo(game), true);
+  assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "orange" }]);
+  assert.equal(toggleLine(game, 2, 12, "orange"), true);
+  assert.deepEqual(game.lines, [], "redrawing the same coloured connection removes it");
 });
 
 test("catalogue has 20 valid, rated, provenance-complete puzzles in every band", async () => {

@@ -9,7 +9,7 @@ const puzzle = {
   id: "test-puzzle", givens: "0".repeat(81), solution: "123456789".repeat(9), source: "Imported", sourceUrl: "", provenance: "test", licence: "test", seRating: null, ratingEngine: "Not rated", ratingVersion: "Not rated", difficulty: "Unrated", catalogueVersion: "test", fullHints: false,
 };
 const game = {
-  version: 1, id: "game-1", puzzle, values: Array(81).fill(""), corner: Array(81).fill(""), centre: Array(81).fill(""), colours: Array(81).fill(""), eliminated: Array(81).fill(""), selected: [0], anchor: 0, mode: "normal", history: [], future: [], hintHistory: [], elapsed: 0, startedAt: 1, updatedAt: 1, completedAt: null, paused: false, hintStage: "none", hintId: null,
+  version: 1, id: "game-1", puzzle, values: Array(81).fill(""), corner: Array(81).fill(""), centre: Array(81).fill(""), colours: Array(81).fill(""), lines: [], eliminated: Array(81).fill(""), selected: [0], anchor: 0, mode: "normal", history: [], future: [], hintHistory: [], elapsed: 0, startedAt: 1, updatedAt: 1, completedAt: null, paused: false, hintStage: "none", hintId: null,
 };
 
 before(async () => {
@@ -25,6 +25,7 @@ test("owners can store and read valid games while other users cannot", async () 
   const other = environment.authenticatedContext("other").firestore();
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/game-1"), game));
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/deselected"), { ...game, id: "deselected", selected: [] }));
+  await assertSucceeds(setDoc(doc(owner, "users/owner/games/lines"), { ...game, id: "lines", mode: "line", lines: [{ from: 0, to: 10, colour: "indigo" }] }));
   const { hintHistory: _hintHistory, ...legacyGame } = game;
   await assertSucceeds(setDoc(doc(owner, "users/owner/games/legacy"), { ...legacyGame, id: "legacy" }));
   await assertSucceeds(getDoc(doc(owner, "users/owner/games/game-1")));
@@ -37,6 +38,7 @@ test("rules reject malformed games and unauthenticated writes", async () => {
   const owner = environment.authenticatedContext("owner").firestore();
   const guest = environment.unauthenticatedContext().firestore();
   await assertFails(setDoc(doc(owner, "users/owner/games/bad"), { ...game, id: "bad", values: [] }));
+  await assertFails(setDoc(doc(owner, "users/owner/games/too-many-lines"), { ...game, id: "too-many-lines", lines: Array(161).fill({ from: 0, to: 1, colour: "cyan" }) }));
   await assertFails(setDoc(doc(guest, "users/owner/games/game-1"), game));
 });
 

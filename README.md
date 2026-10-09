@@ -8,7 +8,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 
 - 80 public-domain, uniquely solvable puzzles: 20 each in Easy, Medium, Hard, and Diabolical.
 - Exact `SE` ratings, friendly bands, stable source IDs, catalogue version, and provenance visible for every bundled puzzle.
-- Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, six cell colours, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
+- Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, nine stackable cell colours, coloured lines between cells, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
 - A compact mobile player keeps the board and full 3×3 number keypad in the initial portrait viewport at supported phone sizes.
 - Progressive hints that identify evidence, name and explain the technique, optionally show the exact answer, keep dismissible per-puzzle history, and wait for a separate apply action. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
@@ -59,6 +59,8 @@ Before relying on a release on a real phone, smoke-test installation from HTTPS,
 `.github/workflows/deploy.yml` is manual. It builds with `BASE_PATH=/strack/`, uploads `dist/`, and deploys through GitHub Pages. In repository settings, select **GitHub Actions** as the Pages source.
 
 The deployment requires the four public Firebase web identifiers as Actions secrets: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Firestore Rules keep every `users/{uid}` game and settings document private to that authenticated user. `npm run test:rules` validates isolation, and `npm run test:cloud` proves a puzzle started in one browser context resumes in another through the local Auth/Firestore emulators.
+
+The required pull-request check stays intentionally lean: catalogue integrity, unit tests, Firestore rules, and the production Pages build/base path. The Chromium/WebKit UI suite and emulator-backed cloud journey remain available as explicit pre-release or local checks without downloading browser engines on every push.
 
 When `firestore.rules` changes, deploy it separately with `npx firebase deploy --only firestore:rules --project strack-bicycle` before publishing the matching Pages release. The Pages workflow does not authenticate to Firebase or deploy backend rules.
 

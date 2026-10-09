@@ -1,10 +1,10 @@
 import "./style.css";
 import catalogueJson from "./data/puzzles.json";
 import { CloudSync, cloudConfigured, sendReset, signInAccount, signOutAccount, watchAuth, type CloudUser } from "./cloud.ts";
-import { applyColour, applyHint, clearSelected, createGame, digitIsComplete, enterDigit, fillAllCandidates, moveSelection, redo, selectCell, setMode, undo } from "./game.ts";
+import { applyColour, applyHint, clearColours, clearLines, clearSelected, createGame, digitIsComplete, enterDigit, fillAllCandidates, moveSelection, redo, selectCell, setMode, toggleLine, undo } from "./game.ts";
 import { candidateList, cellLabel, findHint, normalizePuzzle, peers, validatePuzzle } from "./sudoku.ts";
 import { Store } from "./store.ts";
-import type { Difficulty, EntryMode, Game, Hint, Puzzle, Theme } from "./types.ts";
+import type { AnnotationColour, Difficulty, EntryMode, Game, Hint, Puzzle, Theme } from "./types.ts";
 
 const catalogue = catalogueJson as Puzzle[];
 const store = new Store();
@@ -26,7 +26,9 @@ let cloudUser: CloudUser | null = null;
 let suppressCellClick = false;
 let celebratingGameId: string | null = null;
 let celebrationTimer: number | null = null;
+let activeAnnotationColour: AnnotationColour = "cyan";
 const highlightedDigits = new Set<number>();
+const annotationColours: AnnotationColour[] = ["cyan", "amber", "violet", "green", "rose", "slate", "lime", "orange", "indigo"];
 const cloud = new CloudSync(store, () => {
   document.querySelectorAll<HTMLElement>("[data-cloud-status]").forEach((element) => { element.textContent = cloud.status(); });
   if (["home", "library", "settings"].includes(view) && app.querySelector("main")) render();
@@ -137,7 +139,7 @@ function renderHome() {
 function confirmDeleteGame(id: string) {
   const game = store.data.games[id];
   if (!game) return;
-  showDialog(`<h2>Delete puzzle?</h2><p>Remove this ${escapeHtml(game.puzzle.difficulty)} puzzle and its saved values, notes, colours, and history${cloudUser ? " from your synced devices" : " from this device"}?</p><button class="danger" id="confirm-delete-game">Delete puzzle</button>`, "Keep puzzle");
+  showDialog(`<h2>Delete puzzle?</h2><p>Remove this ${escapeHtml(game.puzzle.difficulty)} puzzle and its saved values, notes, colours, lines, and history${cloudUser ? " from your synced devices" : " from this device"}?</p><button class="danger" id="confirm-delete-game">Delete puzzle</button>`, "Keep puzzle");
   dialog.querySelector("#confirm-delete-game")!.addEventListener("click", async () => {
     await store.removeGame(id);
     const synced = await cloud.deleteGame(id);
@@ -207,14 +209,35 @@ function cellMarkup(game: Game, cell: number, hint: Hint | null): string {
   const given = game.puzzle.givens[cell] !== "0";
   const selected = game.selected.includes(cell);
   const noteDigit = (digit: number) => `<i${store.data.preferences.highlightMatches && highlightedDigits.has(digit) ? ` class="note-match"` : ""}>${digit}</i>`;
-  const classes = ["sudoku-cell", given ? "given" : "", value ? "has-value" : "", game.corner[cell].length ? "has-corner" : "", game.centre[cell].length ? "has-centre" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => game.values[chosen] && peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && value && highlightedDigits.has(Number(value)) ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hint?.targets.some((target) => target.cell === cell) ? "hint-target" : "", game.colours[cell] ? `colour-${game.colours[cell]}` : ""].filter(Boolean).join(" ");
-  let content = "";
+  const cellColours = game.colours[cell];
+  const classes = ["sudoku-cell", given ? "given" : "", value ? "has-value" : "", game.corner[cell].length ? "has-corner" : "", game.centre[cell].length ? "has-centre" : "", cellColours.length ? "has-colours" : "", selected ? "selected" : "", !selected && store.data.preferences.highlightPeers && game.selected.some((chosen) => game.values[chosen] && peers[chosen].includes(cell)) ? "peer" : "", store.data.preferences.highlightMatches && value && highlightedDigits.has(Number(value)) ? "match" : "", store.data.preferences.showMistakes && value && value !== game.puzzle.solution[cell] ? "mistake" : "", hint?.evidence.includes(cell) ? "hint-evidence" : "", hint?.targets.some((target) => target.cell === cell) ? "hint-target" : ""].filter(Boolean).join(" ");
+  let content = cellColours.length ? `<span class="cell-colours" style="--colour-count:${cellColours.length}" aria-hidden="true">${cellColours.map((colour) => `<i class="colour-${colour}"></i>`).join("")}</span>` : "";
   if (value) content = `<span class="cell-value">${value}</span>`;
   if (game.corner[cell].length) content += `<span class="corner-marks">${game.corner[cell].map(noteDigit).join("")}</span>`;
   if (game.centre[cell].length) content += `<span class="centre-marks">${game.centre[cell].map(noteDigit).join("")}</span>`;
   if (!value && !game.corner[cell].length && !game.centre[cell].length && store.data.preferences.autoCandidates) { const candidates = candidateList(game.values, cell, game.eliminated); content = `<span class="centre-marks auto">${candidates.map(noteDigit).join("")}</span>`; }
   const noteLabel = `${game.corner[cell].length ? `, corner notes ${game.corner[cell].join(" ")}` : ""}${game.centre[cell].length ? `, centre notes ${game.centre[cell].join(" ")}` : ""}`;
-  return `<button class="${classes}" data-cell="${cell}" aria-label="${cellLabel(cell)}${value ? `, ${given ? "given " : ""}${value}` : ", empty"}${noteLabel}" aria-pressed="${selected}">${content}<span class="colour-cue" aria-hidden="true"></span></button>`;
+  const colourLabel = cellColours.length ? `, colours ${cellColours.join(", ")}` : "";
+  const lineLabel = game.lines.filter((line) => line.from === cell || line.to === cell).map((line) => `${line.colour} line to ${cellLabel(line.from === cell ? line.to : line.from)}`).join(", ");
+  return `<button class="${classes}" data-cell="${cell}" aria-label="${cellLabel(cell)}${value ? `, ${given ? "given " : ""}${value}` : ", empty"}${noteLabel}${colourLabel}${lineLabel ? `, ${lineLabel}` : ""}" aria-pressed="${selected}">${content}<span class="colour-cues" aria-hidden="true">${cellColours.map((colour) => `<i class="colour-${colour}"></i>`).join("")}</span></button>`;
+}
+
+function lineMarkup(game: Game) {
+  const point = (cell: number) => ({ x: cell % 9 * 100 + 50, y: Math.floor(cell / 9) * 100 + 50 });
+  return `<svg class="annotation-lines" viewBox="0 0 900 900" preserveAspectRatio="none" aria-hidden="true">${game.lines.map((line) => {
+    const from = point(line.from); const to = point(line.to);
+    return `<line class="annotation-line colour-${line.colour}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
+  }).join("")}<line class="annotation-line preview colour-${activeAnnotationColour}" data-line-preview hidden></line></svg>`;
+}
+
+function annotationPalette(game: Game) {
+  const lineMode = game.mode === "line";
+  return `<div class="colour-pad" aria-label="${lineMode ? "Line colours" : "Cell colours"}">${annotationColours.map((colour) => {
+    const active = lineMode ? activeAnnotationColour === colour : game.selected.length > 0 && game.selected.every((cell) => game.colours[cell].includes(colour));
+    return `<button data-colour="${colour}" class="colour-${colour} ${active ? "active" : ""}" aria-pressed="${active}" aria-label="${lineMode ? "Use" : "Toggle"} ${colour} ${lineMode ? "line" : "cell"} colour"><span></span><small>${colour}</small></button>`;
+  }).join("")}</div>${lineMode
+    ? `<div class="line-actions"><button id="connect-cells" class="secondary" ${game.selected.length === 2 ? "" : "disabled"}>Connect selected cells</button><button id="clear-lines" class="secondary" ${game.lines.length ? "" : "disabled"}>Clear all lines</button></div><p class="annotation-guide">Drag from one cell to another, or select exactly two cells and connect them. Drawing the same colour again removes the line.</p>`
+    : `<button id="clear-colours" class="secondary candidate-action" ${game.selected.some((cell) => game.colours[cell].length) ? "" : "disabled"}>Clear selected cell colours</button>`}`;
 }
 
 function recordedHint(game: Game, id: string | null) {
@@ -248,7 +271,7 @@ function renderPlayer() {
     <section class="player-layout">
       <div class="board-column">
         <div class="board-status"><span id="timer" class="timer ${store.data.preferences.showTimer ? "" : "hidden"}">${formatTime(game.elapsed)}</span><span>${game.completedAt ? "Solved" : game.paused ? "Paused" : navigator.onLine ? "Saved on device" : "Saved · offline"}</span></div>
-        <div class="sudoku-board ${game.paused && !game.completedAt ? "paused" : ""} ${celebrating ? "celebrating" : ""}" role="grid" aria-label="Sudoku board">${Array.from({ length: 81 }, (_, cell) => cellMarkup(game, cell, activeHint)).join("")}${game.paused && !game.completedAt ? `<button class="pause-cover" id="resume-board"><strong>Paused</strong><span>Tap to continue</span></button>` : ""}</div>
+        <div class="sudoku-board ${game.mode === "line" ? "drawing-lines" : ""} ${game.paused && !game.completedAt ? "paused" : ""} ${celebrating ? "celebrating" : ""}" role="grid" aria-label="Sudoku board">${Array.from({ length: 81 }, (_, cell) => cellMarkup(game, cell, activeHint)).join("")}${lineMarkup(game)}${game.paused && !game.completedAt ? `<button class="pause-cover" id="resume-board"><strong>Paused</strong><span>Tap to continue</span></button>` : ""}</div>
         ${celebrating ? `<div class="completion-confetti" aria-hidden="true">${Array.from({ length: 14 }, () => "<i></i>").join("")}</div>` : ""}
         ${game.completedAt ? `<div class="completion-banner ${celebrating ? "celebrating" : ""}" role="status"><span aria-hidden="true">★</span><div><strong>Puzzle complete!</strong><small>${game.puzzle.difficulty} · ${rating(game.puzzle)} · ${formatTime(game.elapsed)}</small></div><button id="next-puzzle">Next puzzle</button></div>` : ""}
       </div>
@@ -257,11 +280,11 @@ function renderPlayer() {
         ${activeHint ? `<div class="hint-panel" role="status"><span class="eyebrow">${escapeHtml(activeHint.technique)}</span><h3>${escapeHtml(activeHint.summary)}</h3><p>${escapeHtml(activeHint.explanation)}</p>${activeRecord?.answerShown ? `<p class="hint-answer"><strong>Answer:</strong> ${escapeHtml(hintAnswer(activeHint))}</p>` : ""}<div class="actions"><button id="apply-hint" class="primary compact">Apply deduction</button>${activeRecord?.answerShown ? "" : `<button id="show-hint-answer" class="secondary compact">Show answer</button>`}<button id="dismiss-hint" class="text-button">Dismiss hint</button></div></div>` : ""}
         ${game.hintHistory.length ? `<button id="hint-history" class="history-button">Previous hints (${game.hintHistory.length})</button>` : ""}
         ${wrong && !store.data.preferences.showMistakes ? `<p class="quiet-warning">Something on the board conflicts with the solution. Turn on mistake checks in Settings for cell-level cues.</p>` : ""}
-        <div class="mode-switch" role="group" aria-label="Entry mode">${([['normal','Digit'],['corner','Corner'],['centre','Centre'],['colour','Colour']] as [EntryMode,string][]).map(([mode,label]) => `<button data-mode="${mode}" class="${game.mode === mode ? "active" : ""}" aria-pressed="${game.mode === mode}">${label}</button>`).join("")}</div>
-        ${game.mode === "colour" ? `<div class="colour-pad" aria-label="Cell colours">${["cyan","amber","violet","green","rose","slate"].map((colour) => `<button data-colour="${colour}" class="colour-${colour}" aria-label="Apply ${colour} colour"><span></span></button>`).join("")}<button data-colour="" aria-label="Clear cell colour">×</button></div>` : `<div class="number-pad" aria-label="Number pad">${[1,2,3,4,5,6,7,8,9].map((digit) => { const complete = digitIsComplete(game.values, digit); const active = highlightedDigits.has(digit); return `<button data-digit="${digit}" class="${active ? "active-digit " : ""}${complete ? "complete-digit" : ""}" aria-pressed="${active}" aria-label="${digit}${complete ? ", all placed" : ""}">${digit}</button>`; }).join("")}<button id="clear" class="clear-key">Clear</button></div><p class="highlight-guide ${highlightMode ? "" : "hidden"}">Highlight mode · tap several digits to compare them together.</p>`}
+        <div class="mode-switch" role="group" aria-label="Entry mode">${([['normal','Digit'],['corner','Corner'],['centre','Centre'],['colour','Colour'],['line','Lines']] as [EntryMode,string][]).map(([mode,label]) => `<button data-mode="${mode}" class="${game.mode === mode ? "active" : ""}" aria-pressed="${game.mode === mode}">${label}</button>`).join("")}</div>
+        ${game.mode === "colour" || game.mode === "line" ? annotationPalette(game) : `<div class="number-pad" aria-label="Number pad">${[1,2,3,4,5,6,7,8,9].map((digit) => { const complete = digitIsComplete(game.values, digit); const active = highlightedDigits.has(digit); return `<button data-digit="${digit}" class="${active ? "active-digit " : ""}${complete ? "complete-digit" : ""}" aria-pressed="${active}" aria-label="${digit}${complete ? ", all placed" : ""}">${digit}</button>`; }).join("")}<button id="clear" class="clear-key">Clear</button></div><p class="highlight-guide ${highlightMode ? "" : "hidden"}">Highlight mode · tap several digits to compare them together.</p>`}
         <div class="selection-tools"><button id="multi" class="multi-toggle ${multiSelect ? "active" : ""}" aria-pressed="${multiSelect}"><span aria-hidden="true">▦</span> Multi-select ${multiSelect ? "on" : "off"}</button><button id="highlight-mode" class="multi-toggle ${highlightMode ? "active" : ""}" aria-label="Highlight multiple values" aria-pressed="${highlightMode}"><span aria-hidden="true">◎</span> Highlight values ${highlightMode ? "on" : "off"}</button></div>
         <button id="fill-candidates" class="secondary candidate-action">Calculate all candidates</button>
-        <p class="control-help">Keyboard: arrows move · 1–9 enter · C corner · M centre · V colour · Shift extends selection · Ctrl/⌘ Z undo. Digit entry clears both note types. Highlight values lets number keys select several matches without editing cells.</p>
+        <p class="control-help">Keyboard: arrows move · 1–9 enter · C corner · M centre · V colour · L lines · Shift extends selection · Ctrl/⌘ Z undo. Digit entry clears both note types. Highlight values lets number keys select several matches without editing cells.</p>
       </aside>
     </section>`, "Puzzle desk");
   bindPlayer(game);
@@ -284,7 +307,17 @@ function bindPlayer(game: Game) {
     if (highlightMode || !game.selected.length) { highlightMode = true; toggleHighlight(digit); renderPlayer(); return; }
     void changeGame(game, () => { highlightOnly(digit); enterDigit(game, digit, store.data.preferences.cleanCandidates); });
   }));
-  app.querySelectorAll<HTMLElement>("[data-colour]").forEach((button) => button.addEventListener("click", () => changeGame(game, () => applyColour(game, button.dataset.colour!))));
+  app.querySelectorAll<HTMLElement>("[data-colour]").forEach((button) => button.addEventListener("click", () => {
+    const colour = button.dataset.colour as AnnotationColour;
+    activeAnnotationColour = colour;
+    if (game.mode === "line") renderPlayer();
+    else void changeGame(game, () => applyColour(game, colour));
+  }));
+  app.querySelector("#clear-colours")?.addEventListener("click", () => changeGame(game, () => clearColours(game)));
+  app.querySelector("#connect-cells")?.addEventListener("click", () => {
+    if (game.selected.length === 2) void changeGame(game, () => toggleLine(game, game.selected[0], game.selected[1], activeAnnotationColour));
+  });
+  app.querySelector("#clear-lines")?.addEventListener("click", () => changeGame(game, () => clearLines(game)));
   app.querySelector("#clear")?.addEventListener("click", () => {
     if (!game.selected.length) { highlightedDigits.clear(); renderPlayer(); return; }
     void changeGame(game, () => { highlightedDigits.clear(); clearSelected(game); });
@@ -358,6 +391,8 @@ function bindPlayer(game: Game) {
 function bindCellDrag(game: Game) {
   const board = app.querySelector<HTMLElement>(".sudoku-board")!;
   let activePointer: number | null = null;
+  let lineStart: number | null = null;
+  let lineEnd: number | null = null;
   const visited = new Set<number>();
   const cellAt = (x: number, y: number) => {
     const cell = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-cell]");
@@ -370,11 +405,22 @@ function bindCellDrag(game: Game) {
       cell.setAttribute("aria-pressed", String(selected));
     });
   };
+  const point = (cell: number) => ({ x: cell % 9 * 100 + 50, y: Math.floor(cell / 9) * 100 + 50 });
+  const paintLinePreview = () => {
+    const preview = board.querySelector<SVGLineElement>("[data-line-preview]");
+    if (!preview || lineStart === null || lineEnd === null || lineStart === lineEnd) { preview?.setAttribute("hidden", ""); return; }
+    const from = point(lineStart); const to = point(lineEnd);
+    preview.setAttribute("x1", String(from.x)); preview.setAttribute("y1", String(from.y));
+    preview.setAttribute("x2", String(to.x)); preview.setAttribute("y2", String(to.y));
+    preview.removeAttribute("hidden");
+  };
   const finish = (event: PointerEvent) => {
     if (event.pointerId !== activePointer) return;
     activePointer = null;
     suppressCellClick = true;
     if (board.hasPointerCapture(event.pointerId)) board.releasePointerCapture(event.pointerId);
+    if (game.mode === "line" && lineStart !== null && lineEnd !== null) toggleLine(game, lineStart, lineEnd, activeAnnotationColour);
+    lineStart = null; lineEnd = null;
     game.updatedAt = Date.now();
     void store.putGame(game);
     renderPlayer();
@@ -387,6 +433,16 @@ function bindCellDrag(game: Game) {
     if (!cell || !board.contains(cell)) return;
     const index = Number(cell.dataset.cell);
     highlightMode = false;
+    if (game.mode === "line") {
+      activePointer = event.pointerId;
+      lineStart = index;
+      lineEnd = index;
+      selectCell(game, index, false);
+      board.setPointerCapture(event.pointerId);
+      paintSelection();
+      event.preventDefault();
+      return;
+    }
     const extend = multiSelect || event.shiftKey || event.metaKey || event.ctrlKey;
     activePointer = event.pointerId;
     visited.clear();
@@ -402,6 +458,12 @@ function bindCellDrag(game: Game) {
     const cell = cellAt(event.clientX, event.clientY);
     if (!cell) return;
     const index = Number(cell.dataset.cell);
+    if (game.mode === "line") {
+      lineEnd = index;
+      paintLinePreview();
+      event.preventDefault();
+      return;
+    }
     if (visited.has(index)) return;
     visited.add(index);
     if (!game.selected.includes(index)) game.selected.push(index);
@@ -463,7 +525,7 @@ function renderSettings() {
   shell(`
     <section class="settings-grid">
       <div class="card settings-card account-card"><span class="eyebrow">Cross-device sessions</span><h2>${cloudUser ? "Progress sync is on" : "Continue on another device"}</h2>
-        ${!cloudConfigured ? `<p>Cloud sessions are not configured in this build. Device-only play remains fully available.</p>` : cloudUser ? `<p>Signed in as <strong>${escapeHtml(cloudUser.email || "your account")}</strong>. Puzzle edits, notation, colours, elapsed time, completion history, and preferences sync through your private Firestore account.</p><p class="sync-message ${cloud.error ? "error" : ""}" data-cloud-status>${escapeHtml(cloud.status())}</p>${cloud.error ? `<p class="error">${escapeHtml(cloud.error)}</p><button id="retry-sync" class="secondary">Retry sync</button>` : ""}<button id="sign-out" class="secondary">Sign out on this device</button>` : `<p>Create an account or sign in with the same email on your PC and phone. Offline edits remain on each device and reconcile by the newest saved puzzle version when a connection returns.</p><form id="account-form"><label>Email<input id="account-email" type="email" autocomplete="email" required /></label><label>Password<input id="account-password" type="password" autocomplete="current-password" minlength="6" required /></label><div class="actions"><button class="primary compact" type="submit">Sign in</button><button class="secondary compact" type="submit" data-create="true">Create account</button></div><button class="text-button" type="button" id="reset-password">Send password reset email</button><p id="account-feedback" role="status"></p></form>`}
+        ${!cloudConfigured ? `<p>Cloud sessions are not configured in this build. Device-only play remains fully available.</p>` : cloudUser ? `<p>Signed in as <strong>${escapeHtml(cloudUser.email || "your account")}</strong>. Puzzle edits, notation, cell colours, drawn lines, elapsed time, completion history, and preferences sync through your private Firestore account.</p><p class="sync-message ${cloud.error ? "error" : ""}" data-cloud-status>${escapeHtml(cloud.status())}</p>${cloud.error ? `<p class="error">${escapeHtml(cloud.error)}</p><button id="retry-sync" class="secondary">Retry sync</button>` : ""}<button id="sign-out" class="secondary">Sign out on this device</button>` : `<p>Create an account or sign in with the same email on your PC and phone. Offline edits remain on each device and reconcile by the newest saved puzzle version when a connection returns.</p><form id="account-form"><label>Email<input id="account-email" type="email" autocomplete="email" required /></label><label>Password<input id="account-password" type="password" autocomplete="current-password" minlength="6" required /></label><div class="actions"><button class="primary compact" type="submit">Sign in</button><button class="secondary compact" type="submit" data-create="true">Create account</button></div><button class="text-button" type="button" id="reset-password">Send password reset email</button><p id="account-feedback" role="status"></p></form>`}
       </div>
       <div class="card settings-card"><span class="eyebrow">Appearance</span><h2>Make the desk yours</h2><label>Theme<select id="theme">${(["system","light","dark"] as Theme[]).map((theme) => `<option value="${theme}" ${theme === preferences.theme ? "selected" : ""}>${theme[0].toUpperCase() + theme.slice(1)}</option>`).join("")}</select></label>${toggle("showTimer", "Show timer", "Keep time available without turning it into a score.", preferences.showTimer)}${toggle("highlightPeers", "Highlight peers", "Shade cells sharing a row, column, or box.", preferences.highlightPeers)}${toggle("highlightMatches", "Highlight matching digits", "Show every copy of the selected digit.", preferences.highlightMatches)}</div>
       <div class="card settings-card"><span class="eyebrow">Assistance</span><h2>Notation and checks</h2>${toggle("autoCandidates", "Automatic candidates", "Show canonical candidates in empty cells with no notes.", preferences.autoCandidates)}${toggle("cleanCandidates", "Clean notes after entry", "Remove a placed digit from peer notes.", preferences.cleanCandidates)}${toggle("showMistakes", "Show conflicts with solution", "Add a symbol and outline; never rely on colour alone.", preferences.showMistakes)}</div>
@@ -523,7 +585,7 @@ function showDialog(content: string, closeLabel = "Done") {
 }
 
 function showHelp() {
-  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour applies one of six shades and a visible dot, so meaning never depends on colour alone. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
+  showDialog(`<span class="eyebrow">User guide</span><h2>Solving with STrack</h2><h3>Entering digits and notes</h3><p>Select one cell, drag across cells, or turn on Multi-select. Digit writes an answer for one cell; with several cells selected it defaults to corner notes. Warm corner notes stay in the top-left. Cool centre notes stay centred. Both wrap only when needed, and entering a final value clears both note types from that cell. Across several selected cells, a note is added everywhere first and removed everywhere only when every cell already has it. Calculate all candidates removes corner notes and writes canonical centre candidates in every empty editable cell as one undoable action. The number buttons form a 3×3 keypad. On portrait phones, the compact player keeps the board and full keypad in the initial screen; secondary tools remain available below. Phone note digits are enlarged for legibility. Turn on Highlight values, then tap several digits to compare all of their matching placed values and notes without editing the puzzle. Highlighted notes keep their original warm or cool color and become slightly larger and bold, without a circle or background. Clicking blank space outside the grid and controls clears the cell selection and every value highlight. A digit button becomes grey once all nine instances are placed in the grid, and returns to normal if one is cleared or undone. Peer shading appears only when the selected cell contains a placed value; selecting an empty or notes-only cell keeps the row, column, and box unshaded. Colour offers nine independently toggled shades; cells divide into equal segments when several are applied, with dots as a second cue. Lines uses the same palette: drag between cells, or select exactly two and connect them. Repeating a colored connection removes it; choosing another color recolors it. All annotations support undo, offline saves, backup, and signed-in sync. Solving the final cell adds a short completion celebration that respects reduced-motion settings.</p><h3>History</h3><p>The home screen keeps in-progress puzzles under Recent puzzles and finished games under Completed puzzles. Delete removes a puzzle from this device and, while signed in, from your synced session.</p><h3>Keyboard</h3><p>Arrow keys move. Shift + arrows extends the selection. Press 1–9 to enter, Backspace/Delete to clear, C for corner, M for centre, V for colour, L for lines, and Ctrl/⌘ Z or Y for undo/redo.</p><h3>Hints</h3><p>Hint first identifies evidence and names the technique. Show answer reveals the exact deduction without changing the grid; Apply deduction changes it. Dismiss any hint and reopen it from Previous hints.</p><h3>Difficulty</h3><p>SE values come from SukakuExplainer and describe the hardest logical technique on its selected path. Easy, Medium, Hard, and Diabolical are STrack’s friendly bands, not an official universal scale. Diabolical puzzles can outgrow the local hint engine.</p><h3>Offline, sync, and privacy</h3><p>The production PWA caches its shell, bundled 80-puzzle catalogue, help, and solver. Progress always saves to IndexedDB first. Optional email/password accounts sync private puzzle sessions and preferences through Firestore so you can continue on another device. Core play never requires a connection, and there are no analytics or ads. Keep JSON exports as an independent backup.</p>`, "Got it");
 }
 
 function accountError(error: unknown) {
@@ -569,6 +631,7 @@ document.addEventListener("keydown", async (event) => {
   else if (event.key.toLowerCase() === "c") { setMode(game, "corner"); await store.putGame(game); renderPlayer(); }
   else if (event.key.toLowerCase() === "m") { setMode(game, "centre"); await store.putGame(game); renderPlayer(); }
   else if (event.key.toLowerCase() === "v") { setMode(game, "colour"); await store.putGame(game); renderPlayer(); }
+  else if (event.key.toLowerCase() === "l") { setMode(game, "line"); await store.putGame(game); renderPlayer(); }
   else if (event.key.toLowerCase() === "n") { setMode(game, "normal"); await store.putGame(game); renderPlayer(); }
 });
 

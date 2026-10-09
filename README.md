@@ -16,7 +16,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 - Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device progress/preferences.
 - Local puzzle import with shape, conflict, solution, and uniqueness checks plus URL-only sharing.
 - Installable manifest and versioned app-shell cache. The app shell, help, solver, current progress, preferences, and full bundled catalogue relaunch offline.
-- Responsive phone, desktop, portrait, and landscape layouts with visible focus, semantic names, reduced-motion support, and colour-independent status cues.
+- Responsive phone, desktop, portrait, and landscape layouts with a Sudoku board that expands to use available viewport width and height, plus visible focus, semantic names, reduced-motion support, and colour-independent status cues.
 
 See [the user guide](docs/USER_GUIDE.md) and [puzzle provenance](docs/PUZZLE_PROVENANCE.md) for details.
 

@@ -4,6 +4,8 @@
 
 The home screen offers **Daily challenges** and **Weekly challenges**, each with one puzzle in Easy, Medium, Hard, and Diabolical. Daily selections change at midnight UTC; weekly selections use the ISO week. The choice is deterministic, so every player sees the same challenge from the bundled offline catalogue during that period. If you already started or completed it, its card shows that status and opens the same saved game. Signed-in sessions therefore continue naturally between a PC and phone.
 
+The challenge summary tracks how many of the current four puzzles you completed, your total challenge solves, and your average completed solve time separately for daily and weekly challenges. A streak advances when you complete at least one challenge in consecutive UTC days or ISO weeks. It remains visible during the next day or week before you have completed that period's first challenge, then resets when a full period is missed. Tracking begins when a puzzle is opened from a challenge card; older ordinary games are not retroactively counted.
+
 Home also keeps recent games on this device. If a puzzle is in progress, **Resume puzzle** returns to it. The library filters all 80 bundled puzzles by friendly band, exact SE range, and local progress.
 
 Every bundled puzzle works offline after the first successful production load. The status above the home title says whether the browser is online; it does not affect core play.
@@ -64,7 +66,7 @@ The puzzle board automatically expands when more screen width and height are ava
 
 ## Recent and completed puzzles
 
-The home screen separates unfinished games under **Recent puzzles** from solved games under **Completed puzzles**. Each card has a delete control. Deletion removes the saved values, notes, colours, undo history, and elapsed time; while signed in, it also propagates through the private Firestore session to your other devices.
+The home screen places unfinished games under **Active puzzles** directly below the hero so they are quick to resume. Solved games remain separate under **Completed puzzles**. Each card has a delete control. Deletion removes the saved values, notes, colours, undo history, elapsed time, and any associated challenge result; while signed in, it also propagates through the private Firestore session to your other devices.
 
 ## Keyboard shortcuts
 

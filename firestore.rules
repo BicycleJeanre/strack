@@ -10,7 +10,7 @@ service cloud.firestore {
     function validGame(id) {
       let d = request.resource.data;
       return d.keys().hasAll(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
-        && d.keys().hasOnly(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'lines', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'hintHistory', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId'])
+        && d.keys().hasOnly(['version', 'id', 'puzzle', 'values', 'corner', 'centre', 'colours', 'lines', 'eliminated', 'selected', 'anchor', 'mode', 'history', 'future', 'hintHistory', 'elapsed', 'startedAt', 'updatedAt', 'completedAt', 'paused', 'hintStage', 'hintId', 'challenge'])
         && d.version == 1
         && d.id == id && validId(id)
         && d.puzzle is map && validId(d.puzzle.id)
@@ -34,7 +34,14 @@ service cloud.firestore {
         && (d.completedAt == null || (d.completedAt is number && d.completedAt >= d.startedAt))
         && d.paused is bool
         && d.hintStage in ['none', 'preview']
-        && (d.hintId == null || (d.hintId is string && d.hintId.size() <= 240));
+        && (d.hintId == null || (d.hintId is string && d.hintId.size() <= 240))
+        && (!('challenge' in d) || (d.challenge is map
+          && d.challenge.keys().hasAll(['cadence', 'periodKey'])
+          && d.challenge.keys().hasOnly(['cadence', 'periodKey'])
+          && d.challenge.cadence in ['daily', 'weekly']
+          && d.challenge.periodKey is string
+          && d.challenge.periodKey.size() >= 8
+          && d.challenge.periodKey.size() <= 10));
     }
     function validTrainingItem(value) {
       return value is map

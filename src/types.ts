@@ -1,4 +1,5 @@
 export type Difficulty = "Easy" | "Medium" | "Hard" | "Diabolical";
+export type ChallengeCadence = "daily" | "weekly";
 export type EntryMode = "normal" | "corner" | "centre" | "colour" | "line";
 export type Theme = "system" | "light" | "dark";
 export type AnnotationColour = "cyan" | "amber" | "violet" | "green" | "rose" | "slate" | "lime" | "orange" | "indigo";
@@ -50,6 +51,10 @@ export interface Game extends BoardSnapshot {
   hintStage: "none" | "preview";
   hintId: string | null;
   hintHistory: HintRecord[];
+  challenge?: {
+    cadence: ChallengeCadence;
+    periodKey: string;
+  };
 }
 
 export interface Preferences {

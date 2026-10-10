@@ -7,7 +7,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 ## Release 1
 
 - 80 public-domain, uniquely solvable puzzles: 20 each in Easy, Medium, Hard, and Diabolical.
-- Deterministic daily and weekly challenges for every difficulty, selected from the offline catalogue using UTC periods and connected to the same resumable local/Firestore game sessions as the library.
+- Deterministic daily and weekly challenges for every difficulty, selected from the offline catalogue using UTC periods and connected to the same resumable local/Firestore game sessions as the library. Home tracks current-period completion, daily and weekly streaks, solve counts, and average completion times.
 - Exact `SE` ratings, friendly bands, stable source IDs, catalogue version, and provenance visible for every bundled puzzle.
 - Normal digits that replace both note types in their cell, warm top-left corner/Snyder marks, cool centred candidate marks, one-click undoable centre-candidate calculation, nine stackable cell colours, coloured lines between cells, click-drag multi-cell selection, and deterministic selection-wide corner notation when entering digits across several cells.
 - Mouse, touch, and keyboard parity, including arrows, Shift-selection, number entry, notation shortcuts, and undo/redo.
@@ -15,7 +15,7 @@ The production build is designed for `https://bicyclejeanre.github.io/strack/`. 
 - Progressive hints that identify evidence and explain the technique without exposing the digit, optionally reveal the exact answer, keep dismissible per-puzzle history, and offer Apply only after that reveal. Easy, Medium, and Hard have verified complete local hint paths; Diabolical puzzles disclose that advanced hints may be partial.
 - A 20-technique offline curriculum with clickable family filters, spanning singles, intersections, subsets, X-Wing, Swordfish, Jellyfish, Skyscraper, two-string kite, three wing families, coloring, X/XY/alternating-inference chains, unique rectangles, ALS-XZ, and forcing chains. Each lesson moves through Learn, Find, and Deduce using a bundled puzzle position or focused candidate diagram, records independent or assisted completion, and synchronizes progress for signed-in users.
 - Automatic candidates, larger phone-note digits, bold color-preserving note matches with subtle matching-cell shading, an explicit multi-value highlight mode, a 3×3 number keypad, completed-digit cues, candidate cleanup, optional mistake cues, completion fanfare, pause, optional timer, and light/dark/system themes.
-- IndexedDB save/resume, separate in-progress and completed sections, per-puzzle deletion, non-destructive JSON backup import, and scoped reset controls.
+- IndexedDB save/resume, active puzzles placed near the top of Home, a separate completed section, per-puzzle deletion, non-destructive JSON backup import, and scoped reset controls.
 - Optional email/password accounts with owner-only Firestore sessions, offline-first writes, newest-version conflict handling, and cross-device puzzle, preference, and training progress.
 - Local puzzle import with shape, conflict, solution, and uniqueness checks plus URL-only sharing.
 - Installable manifest and versioned app-shell cache. The app shell, help, solver, current progress, preferences, and full bundled catalogue relaunch offline.

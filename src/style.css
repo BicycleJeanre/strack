@@ -138,11 +138,27 @@ p, li, dd { color: var(--muted); font-size: 13px; line-height: 1.65; }
 .band-mark.hard, .difficulty.hard { --band: #f2b85b; }
 .band-mark.diabolical, .difficulty.diabolical { --band: #db7085; }
 .band-mark { background: var(--band, #4ebea3); }
+.active-section { margin-bottom: 42px; }
 .challenge-section { margin-bottom: 42px; }
 .challenge-intro { max-width: 680px; margin: -3px 0 14px; }
 .challenge-tabs { display: inline-grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-soft); }
 .challenge-tabs button { min-height: 34px; padding: 5px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; }
 .challenge-tabs button[aria-pressed="true"] { background: var(--panel-raised); color: var(--accent); box-shadow: 0 1px 4px #0003; }
+.challenge-stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.challenge-stat { padding: 16px; }
+.challenge-stat-heading { display: flex; align-items: center; gap: 10px; }
+.challenge-stat-heading strong, .challenge-stat-heading small { display: block; }
+.challenge-stat-heading strong { font-size: 13px; }
+.challenge-stat-heading small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.challenge-stat-icon { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 950; }
+.challenge-stat progress { width: 100%; height: 5px; margin: 13px 0 11px; overflow: hidden; border: 0; border-radius: 5px; background: var(--panel-soft); accent-color: var(--accent); }
+.challenge-stat progress::-webkit-progress-bar { border-radius: 5px; background: var(--panel-soft); }
+.challenge-stat progress::-webkit-progress-value { border-radius: 5px; background: var(--accent); }
+.challenge-stat progress::-moz-progress-bar { border-radius: 5px; background: var(--accent); }
+.challenge-stat dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.challenge-stat dl div { min-width: 0; }
+.challenge-stat dt { color: var(--faint); font-size: 8px; font-weight: 850; letter-spacing: .7px; text-transform: uppercase; }
+.challenge-stat dd { margin: 3px 0 0; color: var(--text); font-size: 12px; font-weight: 850; font-variant-numeric: tabular-nums; }
 .challenge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .challenge-card { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 13px; align-items: center; min-height: 100px; padding: 15px; text-align: left; }
 .challenge-card:hover { border-color: var(--accent); transform: translateY(-1px); }
@@ -342,7 +358,7 @@ dialog::backdrop { background: #020607b8; backdrop-filter: blur(4px); }
   .page-heading { margin-bottom: 18px; }.page-heading h1 { font-size: 27px; }
   .hero { grid-template-columns: 1fr; min-height: auto; margin-bottom: 30px; padding: 25px 20px; }.hero .primary { min-height: 58px; }
   .band-grid { gap: 8px; }.band-card { min-height: 120px; padding: 15px; }.band-card strong { margin-top: 22px; }
-  .challenge-heading { align-items: stretch; flex-direction: column; }.challenge-tabs { align-self: stretch; }.challenge-card { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; min-height: 92px; padding: 12px; }.challenge-calendar { width: 40px; height: 48px; }.challenge-arrow { display: none; }
+  .challenge-heading { align-items: stretch; flex-direction: column; }.challenge-tabs { align-self: stretch; }.challenge-stats-grid { grid-template-columns: 1fr; }.challenge-stat { padding: 13px; }.challenge-card { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; min-height: 92px; padding: 12px; }.challenge-calendar { width: 40px; height: 48px; }.challenge-arrow { display: none; }
   .recent-list { grid-template-columns: 1fr 1fr; }.recent-card { min-height: 102px; }
   .filters { gap: 8px; padding: 10px; }.library-summary { align-items: flex-start; }.library-summary p { margin: 7px 0; }
   .puzzle-card { min-height: 115px; padding: 14px; }.puzzle-card h2 { font-size: 15px; }

@@ -77,6 +77,7 @@ test("deleted puzzles stay deleted when a stale cloud game arrives", async () =>
 test("cloud encoding preserves multiple colours and line annotations without nested arrays", async () => {
   const { decodeCloudGame, encodeCloudGame } = await import("../src/cloud.ts");
   const game = createGame(puzzle, 700);
+  game.challenge = { cadence: "daily", periodKey: "2026-10-10" };
   game.colours[0] = ["cyan", "amber", "indigo"];
   game.lines = [{ from: 0, to: 10, colour: "rose" }];
   const encoded = encodeCloudGame(game);
@@ -85,4 +86,5 @@ test("cloud encoding preserves multiple colours and line annotations without nes
   const decoded = decodeCloudGame(encoded);
   assert.deepEqual(decoded?.colours[0], ["cyan", "amber", "indigo"]);
   assert.deepEqual(decoded?.lines, [{ from: 0, to: 10, colour: "rose" }]);
+  assert.deepEqual(decoded?.challenge, { cadence: "daily", periodKey: "2026-10-10" });
 });

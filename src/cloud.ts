@@ -117,6 +117,7 @@ export function encodeCloudGame(game: Game): CloudGame {
 export function decodeCloudGame(value: unknown): Game | null {
   const game = value as CloudGame;
   if (!game || game.version !== 1 || typeof game.id !== "string" || game.puzzle?.givens?.length !== 81 || game.values?.length !== 81 || game.corner?.length !== 81 || game.centre?.length !== 81 || game.colours?.length !== 81 || game.eliminated?.length !== 81 || !Array.isArray(game.history) || !Array.isArray(game.future) || typeof game.updatedAt !== "number") return null;
+  if (game.challenge && (!(["daily", "weekly"] as string[]).includes(game.challenge.cadence) || typeof game.challenge.periodKey !== "string" || game.challenge.periodKey.length > 10)) return null;
   const history = game.history.map(decodeSnapshot);
   const future = game.future.map(decodeSnapshot);
   let hintHistory: Game["hintHistory"] = [];

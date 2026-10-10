@@ -79,7 +79,7 @@ The first release must support at least the techniques necessary for its bundled
 
 ## Core screens and flows
 
-- Home: resume active puzzle, open deterministic daily or weekly challenges for every difficulty, choose a new puzzle by band/SE range, enter training, open a puzzle string/link, and view recent completions. Challenge periods use UTC/ISO-week keys, work from the bundled offline catalogue, and resume the same local or synced game.
+- Home: place active puzzles immediately below the hero for quick resume; open deterministic daily or weekly challenges for every difficulty; track current-period completion, consecutive-period streaks, totals, and average solve times; choose a new puzzle by band/SE range; enter training; open a puzzle string/link; and view recent completions. Challenge periods use UTC/ISO-week keys, work from the bundled offline catalogue, and resume the same local or synced game.
 - Training: a curriculum hub with interactive family filters and a lesson player spanning singles, intersections, subsets, fish, single-digit patterns, wings, coloring, chains, uniqueness, ALS, and forcing logic. Lessons use bundled puzzle positions where the local hint engine can derive them and focused original candidate diagrams for advanced patterns, then progress through Learn, Find, Deduce, and Complete.
 - Puzzle player: grid, number pad, normal/corner/centre modes, colour palette, undo/redo, timer, hint, settings, pause, and completion state.
 - Puzzle library: filters for difficulty, completion, source, and rating; accessible compact cards; deterministic random choice.
@@ -104,7 +104,7 @@ The first release must support at least the techniques necessary for its bundled
 - Normal digits, corner marks, centre marks, colours, multi-cell selection, undo/redo, automatic candidates, highlighting, timer, save/resume, light/dark/system theme, and keyboard/touch flows work.
 - Hints name and explain logical techniques and visually mark the relevant evidence.
 - Training teaches every technique currently supported by the local hint engine plus the documented advanced curriculum through interactive pattern and deduction exercises, works offline, and retains progress across signed-in devices.
-- Daily and weekly challenge cards expose all four difficulty bands, remain stable for their UTC period, work offline, and resume existing cross-device sessions.
+- Daily and weekly challenge cards expose all four difficulty bands, remain stable for their UTC period, work offline, resume existing cross-device sessions, and retain cadence/period metadata for completion counts, streaks, totals, and average times.
 - Imported puzzles are validated and can be shared entirely client-side.
 - Responsive behavior is verified for a narrow phone viewport and desktop; controls remain usable in portrait and landscape.
 - Accessibility tests cover focus, names, contrast, non-colour cues, reduced motion, and keyboard-only completion of essential flows.

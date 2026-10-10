@@ -10,8 +10,18 @@ test.beforeEach(async ({ page }) => {
 test("home, library and puzzle details expose the offline catalogue and SE provenance", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Good/ })).toBeVisible();
   await expect(page.getByText("See all 80")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Active puzzles" })).toBeVisible();
+  await expect(page.getByText("0 of 4 today")).toBeVisible();
+  await expect(page.getByText("0 of 4 this week")).toBeVisible();
+  const activeTop = await page.getByRole("heading", { name: "Active puzzles" }).evaluate((element) => element.getBoundingClientRect().top);
+  const chooseTop = await page.getByRole("heading", { name: "Choose your pace" }).evaluate((element) => element.getBoundingClientRect().top);
+  expect(activeTop).toBeLessThan(chooseTop);
   await expect(page.getByRole("heading", { name: "Daily challenges" })).toBeVisible();
   await expect(page.locator("[data-challenge-puzzle]")).toHaveCount(4);
+  await page.locator("[data-challenge-puzzle]").first().click();
+  await expect(page.getByRole("grid", { name: "Sudoku board" })).toBeVisible();
+  await page.getByRole("button", { name: "STrack home" }).click();
+  await expect(page.locator(".active-section").getByText("Daily challenge")).toBeVisible();
   await page.getByRole("button", { name: "This week" }).click();
   await expect(page.getByRole("heading", { name: "Weekly challenges" })).toBeVisible();
   await expect(page.locator("[data-challenge-puzzle]")).toHaveCount(4);

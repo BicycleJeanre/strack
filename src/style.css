@@ -196,6 +196,7 @@ textarea { min-height: 122px; padding: 12px; resize: vertical; font-family: ui-m
 .sudoku-cell:nth-child(n+73) { border-bottom: 0; }
 .sudoku-cell.given { color: var(--board-given); background: var(--board); }
 .sudoku-cell.peer { background: var(--board-peer); }
+.sudoku-cell.note-match-cell { background: color-mix(in srgb, var(--board-match) 48%, var(--board)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--board-match) 72%, transparent); }
 .sudoku-cell.match { background: var(--board-match); }
 .sudoku-cell.selected { z-index: 2; background: var(--board-selected); box-shadow: inset 0 0 0 3px var(--board-selected-outline); }
 .sudoku-cell.mistake { box-shadow: inset 0 0 0 3px var(--board-mistake); }

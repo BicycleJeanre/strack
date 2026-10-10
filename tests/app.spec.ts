@@ -259,6 +259,11 @@ test("selecting a placed value highlights matching corner and centre notes", asy
   const centreMatch = empty.nth(1).locator(".centre-marks .note-match");
   await expect(cornerMatch).toHaveText(digit!);
   await expect(centreMatch).toHaveText(digit!);
+  await expect(empty.nth(0)).toHaveClass(/note-match-cell/);
+  await expect(empty.nth(1)).toHaveClass(/note-match-cell/);
+  const noteCellBackground = await empty.nth(0).evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(await empty.nth(1).evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(noteCellBackground);
+  expect(await empty.nth(2).evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(noteCellBackground);
   expect(await page.locator(".note-match").count()).toBeGreaterThanOrEqual(2);
   const matchStyles = await Promise.all([cornerMatch, centreMatch].map((match) => match.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -286,6 +291,7 @@ test("selecting a placed value highlights matching automatic candidates", async 
   const matches = page.locator(".centre-marks.auto .note-match");
   expect(await matches.count()).toBeGreaterThan(0);
   await expect(matches.first()).toHaveText(digit!);
+  await expect(matches.first().locator("xpath=ancestor::button[contains(@class, 'sudoku-cell')]")).toHaveClass(/note-match-cell/);
   expect(await matches.first().evaluate((element) => getComputedStyle(element).opacity)).toBe("1");
 });
 

@@ -114,23 +114,32 @@ test("nine colours subdivide cells and coloured lines can be drawn, recoloured a
   for (const colour of ["cyan", "amber", "indigo"]) await page.getByRole("button", { name: `Toggle ${colour} cell colour` }).click();
   await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(3);
   await expect(empty.nth(0).locator(".colour-cues i")).toHaveCount(3);
-  await page.getByRole("button", { name: "Toggle amber cell colour" }).click();
+  await page.getByLabel("Colour to clear").selectOption("amber");
+  await page.getByRole("button", { name: "Clear amber everywhere" }).click();
+  await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(2);
+  await page.getByRole("button", { name: "Clear all cell colours" }).click();
+  await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo" }).click();
   await expect(empty.nth(0).locator(".cell-colours i")).toHaveCount(2);
 
   await page.getByRole("button", { name: "Lines" }).click();
   await page.getByRole("button", { name: "Use rose line colour" }).click();
-  const from = (await cells.nth(0).boundingBox())!;
-  const to = (await cells.nth(10).boundingBox())!;
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 4 });
-  await page.mouse.up();
+  await cells.nth(0).dragTo(cells.nth(10));
   const line = page.locator(".annotation-line:not(.preview)");
   await expect(line).toHaveCount(1);
   await expect(line).toHaveClass(/colour-rose/);
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(line).toHaveCount(0);
   await page.getByRole("button", { name: "Redo" }).click();
+  await expect(line).toHaveCount(1);
+  await page.getByLabel("Colour to clear").selectOption("rose");
+  await page.getByRole("button", { name: "Clear rose lines" }).click();
+  await expect(line).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(line).toHaveCount(1);
+  await page.getByRole("button", { name: "Clear all lines" }).click();
+  await expect(line).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo" }).click();
   await expect(line).toHaveCount(1);
 
   await cells.nth(0).click();
@@ -176,13 +185,13 @@ test("peer shading appears only when the selected cell contains a value", async 
 test("home separates completed puzzles and allows individual deletion", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   await page.getByRole("button", { name: /Home/ }).click();
-  await expect(page.getByRole("heading", { name: "Recent puzzles" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Active puzzles" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Completed puzzles", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Delete recent Easy puzzle/ }).click();
   await page.getByRole("button", { name: "Delete puzzle", exact: true }).click();
   await expect(page.getByRole("heading", { name: "No puzzles in progress" })).toBeVisible();
 
-  await page.getByRole("button", { name: /Medium/ }).click();
+  await page.getByRole("button", { name: "Medium Pairs and locked" }).click();
   await page.evaluate(async () => {
     const request = indexedDB.open("strack-v1");
     const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -272,7 +281,7 @@ test("selecting a placed value highlights matching corner and centre notes", asy
   await expect(empty.nth(0)).toHaveClass(/note-match-cell/);
   await expect(empty.nth(1)).toHaveClass(/note-match-cell/);
   const noteCellBackground = await empty.nth(0).evaluate((element) => getComputedStyle(element).backgroundColor);
-  expect(await empty.nth(1).evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(noteCellBackground);
+  await expect(empty.nth(1)).toHaveCSS("background-color", noteCellBackground);
   expect(await empty.nth(2).evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(noteCellBackground);
   expect(await page.locator(".note-match").count()).toBeGreaterThanOrEqual(2);
   const matchStyles = await Promise.all([cornerMatch, centreMatch].map((match) => match.evaluate((element) => {
@@ -375,19 +384,28 @@ test("corner notes remain separate from cell values and multi-cell toggles conve
 
 test("highlight mode selects multiple values and clicking outside clears every highlight", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
-  await expect(page.locator(".sudoku-cell.selected")).toHaveCount(1);
+  const empty = page.locator(".sudoku-cell:not(.given)");
+  await empty.nth(0).click();
+  await page.getByRole("button", { name: "Centre", exact: true }).click();
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await empty.nth(1).click();
+  await page.getByRole("button", { name: "1", exact: true }).click();
   await page.getByRole("button", { name: "Highlight multiple values" }).click();
   await expect(page.locator(".sudoku-cell.selected")).toHaveCount(0);
-  await expect(page.getByText("Highlight mode · tap several digits to compare them together.")).toBeVisible();
+  await expect(page.getByText("Highlight cells containing:")).toBeVisible();
 
-  const values = await page.locator(".sudoku-cell.given .cell-value").allTextContents();
-  const digits = [...new Set(values)].slice(0, 2);
-  expect(digits).toHaveLength(2);
-  for (const digit of digits) await page.locator(`[data-digit="${digit}"]`).click();
-  for (const digit of digits) await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
-  expect(await page.locator(".sudoku-cell.match").count()).toBeGreaterThanOrEqual(2);
+  for (const digit of ["1", "2"]) await page.locator(`[data-digit="${digit}"]`).click();
+  for (const digit of ["1", "2"]) await expect(page.locator(`[data-digit="${digit}"]`)).toHaveClass(/active-digit/);
+  await expect(empty.nth(0)).toHaveClass(/note-match-cell/);
+  await expect(empty.nth(1)).toHaveClass(/note-match-cell/);
+  await page.getByRole("button", { name: "All digits · AND" }).click();
+  await expect(page.getByRole("button", { name: "All digits · AND" })).toHaveAttribute("aria-pressed", "true");
+  await expect(empty.nth(0)).toHaveClass(/note-match-cell/);
+  await expect(empty.nth(1)).not.toHaveClass(/note-match-cell/);
+  await expect(page.locator(".sudoku-cell.match")).toHaveCount(0);
   await page.locator(".controls").dispatchEvent("click");
-  for (const digit of digits) await expect(page.locator(`[data-digit="${digit}"]`)).not.toHaveClass(/active-digit/);
+  for (const digit of ["1", "2"]) await expect(page.locator(`[data-digit="${digit}"]`)).not.toHaveClass(/active-digit/);
   await expect(page.locator(".sudoku-cell.match")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Highlight multiple values" })).toHaveAttribute("aria-pressed", "false");
 });
@@ -469,7 +487,7 @@ test("settings persist theme and help explains notation, ratings, offline use an
   await page.getByRole("button", { name: "Open user guide" }).click();
   const guide = page.getByRole("dialog");
   await expect(guide).toContainText("Warm corner notes stay in the top-left");
-  await expect(guide).toContainText("Cool centre notes stay centred");
+  await expect(guide).toContainText("High-contrast centre notes stay centred");
   await expect(guide).toContainText("not an official universal scale");
   await expect(guide).toContainText("IndexedDB");
   await guide.getByRole("button", { name: "Got it" }).click();
@@ -485,12 +503,28 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
       const given = document.querySelector<HTMLElement>(".sudoku-cell.given:not(.peer):not(.match)")!;
       const empty = document.querySelector<HTMLElement>(".sudoku-cell:not(.given):not(.selected):not(.peer):not(.match)")!;
       const peer = document.querySelector<HTMLElement>(".sudoku-cell.peer")!;
+      const styles = getComputedStyle(document.documentElement);
+      const rgb = (value: string) => {
+        const sample = document.createElement("span");
+        sample.style.color = value.trim();
+        document.body.append(sample);
+        const channels = getComputedStyle(sample).color.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+        sample.remove();
+        return channels;
+      };
+      const luminance = (channels: number[]) => channels.map((channel) => channel / 255).map((channel) => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
+      const note = rgb(styles.getPropertyValue("--board-centre-note"));
+      const surface = rgb(styles.getPropertyValue("--board"));
+      const light = Math.max(luminance(note), luminance(surface));
+      const dark = Math.min(luminance(note), luminance(surface));
       return {
         board: getComputedStyle(document.querySelector<HTMLElement>(".sudoku-board")!).backgroundColor,
         given: getComputedStyle(given).backgroundColor,
         empty: getComputedStyle(empty).backgroundColor,
         peer: getComputedStyle(peer).backgroundColor,
         givenText: getComputedStyle(given).color,
+        centreNote: `rgb(${note.join(", ")})`,
+        centreNoteContrast: (light + .05) / (dark + .05),
       };
     });
   };
@@ -519,6 +553,10 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
   expect(light.peer).not.toBe(light.empty);
   expect(dark.given).not.toBe(light.given);
   expect(dark.givenText).not.toBe(light.givenText);
+  expect(dark.centreNote).toBe("rgb(245, 251, 252)");
+  expect(light.centreNote).toBe("rgb(21, 33, 38)");
+  expect(dark.centreNoteContrast).toBeGreaterThan(12);
+  expect(light.centreNoteContrast).toBeGreaterThan(12);
 });
 
 test("import validates uniqueness and creates a client-side share link", async ({ page }) => {

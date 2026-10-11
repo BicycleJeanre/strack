@@ -139,6 +139,20 @@ export function clearColours(game: Game) {
   return true;
 }
 
+export function clearColour(game: Game, colour: AnnotationColour) {
+  if (!game.colours.some((items) => items.includes(colour))) return false;
+  startChange(game);
+  for (let cell = 0; cell < game.colours.length; cell++) game.colours[cell] = game.colours[cell].filter((item) => item !== colour);
+  return true;
+}
+
+export function clearAllColours(game: Game) {
+  if (!game.colours.some((items) => items.length)) return false;
+  startChange(game);
+  game.colours = Array.from({ length: 81 }, () => []);
+  return true;
+}
+
 export function toggleLine(game: Game, first: number, second: number, colour: AnnotationColour) {
   if (first === second || first < 0 || first > 80 || second < 0 || second > 80) return false;
   const from = Math.min(first, second);
@@ -155,6 +169,13 @@ export function clearLines(game: Game) {
   if (!game.lines.length) return false;
   startChange(game);
   game.lines = [];
+  return true;
+}
+
+export function clearLinesByColour(game: Game, colour: AnnotationColour) {
+  if (!game.lines.some((line) => line.colour === colour)) return false;
+  startChange(game);
+  game.lines = game.lines.filter((line) => line.colour !== colour);
   return true;
 }
 

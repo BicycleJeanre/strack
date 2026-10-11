@@ -33,7 +33,7 @@ Select a cell, choose an entry mode, then choose a number:
 
 - **Digit** enters an answer.
 - **Corner** stores short Snyder-style marks in the top-left corner, using the warm note colour. The marks stay on one line until they need to wrap.
-- **Centre** stores a cool-coloured candidate list in the middle. It also wraps only when necessary and is cleared when the cell receives an answer.
+- **Centre** stores a high-contrast candidate list in the middle: near-white on the dark board and near-black on the light board. It wraps only when necessary and is cleared when the cell receives an answer.
 - **Colour** applies one of nine cell shades. Each coloured cell also has a bordered dot, so the state is not conveyed by colour alone.
 
 Turn on **Multi-select** to add or remove individual cells from the selection. On a keyboard, Shift + arrow extends the selection; Shift-, Ctrl-, or Command-click also adds or removes a cell. An entry or clear action applies to every selected editable cell.
@@ -48,7 +48,9 @@ Multi-cell notes use one selection-wide toggle: if any selected cell is missing 
 
 **Calculate all candidates** removes corner notes and writes the candidates currently allowed by each empty editable cell's row, column, box, and recorded eliminations as centre notes. The entire calculation is one undoable action.
 
-The number buttons use a 3×3 keypad. The most recently entered digit stays active and highlights matching placed values in the grid. Note digits are enlarged on phone screens. Matching corner, centre, and automatic candidate notes keep their original warm or cool text color and become slightly larger and bold, without a circle around the digit. Their cells also receive a lighter version of the match shade, while placed values retain the stronger shade. Turn on **Highlight values** to deselect cells and make keypad digits toggle independently, allowing several values to be highlighted together without changing the puzzle. Clicking blank space outside the grid and buttons clears the cell selection, highlight mode, and every active value highlight.
+The number buttons use a 3×3 keypad. The most recently entered digit stays active and highlights matching placed values in the grid. Note digits are enlarged on phone screens. Matching corner, centre, and automatic candidate notes keep their original warm or neutral text color and become slightly larger and bold, without a circle around the digit. Their cells also receive a lighter version of the match shade, while placed values retain the stronger shade. Turn on **Highlight values** to deselect cells and make keypad digits toggle independently, allowing several values to be highlighted together without changing the puzzle. Choose **Any digit · OR** to find cells containing at least one selected note, or **All digits · AND** to focus only on note cells containing every selected digit. Clicking blank space outside the grid and buttons clears the cell selection, highlight mode, and every active value highlight.
+
+Colour and line controls include three levels of cleanup: selected cell colours, every instance of one chosen colour, or all annotations of the current type. Every clear action is undoable.
 
 **Colour** offers nine colors. Each color toggles independently on every selected cell, so a cell can retain several colors at once; its background is divided into equal color segments and small dots provide a second cue. **Lines** uses the same palette. Choose a line color, then drag from one cell to another. Drawing the same colored connection again removes it, while drawing it in another color recolors it. For keyboard use, select exactly two cells and choose **Connect selected cells**. Cell colors and lines are included in undo, redo, local saves, JSON backups, and signed-in synchronization.
 

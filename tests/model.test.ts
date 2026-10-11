@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { applyColour, clearColours, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
+import { applyColour, clearAllColours, clearColour, clearColours, clearLines, clearLinesByColour, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
 import { applyHint as applyLogicalHint, candidateList, findHint, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
 
@@ -120,11 +120,28 @@ test("cells retain multiple colours and coloured lines participate in undo and r
   applyColour(game, "rose");
   assert.deepEqual(game.colours[2], ["amber", "indigo", "rose"]);
   assert.deepEqual(game.colours[3], ["rose"]);
+  assert.equal(clearColour(game, "amber"), true);
+  assert.deepEqual(game.colours[2], ["indigo", "rose"]);
+  assert.deepEqual(game.colours[3], ["rose"], "clearing one colour preserves every other colour");
+  assert.equal(undo(game), true);
+  assert.deepEqual(game.colours[2], ["amber", "indigo", "rose"]);
   assert.equal(clearColours(game), true);
   assert.deepEqual(game.colours[2], []);
   assert.deepEqual(game.colours[3], []);
+  assert.equal(undo(game), true);
+  assert.equal(clearAllColours(game), true);
+  assert.equal(game.colours.some((colours) => colours.length > 0), false);
 
   assert.equal(toggleLine(game, 2, 12, "violet"), true);
+  assert.equal(toggleLine(game, 3, 13, "cyan"), true);
+  assert.equal(clearLinesByColour(game, "violet"), true);
+  assert.deepEqual(game.lines, [{ from: 3, to: 13, colour: "cyan" }], "clearing one line colour preserves other lines");
+  assert.equal(undo(game), true);
+  assert.equal(clearLines(game), true);
+  assert.deepEqual(game.lines, []);
+  assert.equal(undo(game), true);
+  assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "violet" }, { from: 3, to: 13, colour: "cyan" }]);
+  assert.equal(toggleLine(game, 3, 13, "cyan"), true);
   assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "violet" }]);
   assert.equal(toggleLine(game, 12, 2, "orange"), true);
   assert.deepEqual(game.lines, [{ from: 2, to: 12, colour: "orange" }], "redrawing with another colour recolours the connection");

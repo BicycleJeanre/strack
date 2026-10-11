@@ -282,12 +282,18 @@ test("selecting a placed value highlights matching corner and centre notes", asy
   await expect(empty.nth(1)).toHaveClass(/note-match-cell/);
   const noteCellBackground = await empty.nth(0).evaluate((element) => getComputedStyle(element).backgroundColor);
   await expect(empty.nth(1)).toHaveCSS("background-color", noteCellBackground);
+  await expect(page.locator(".sudoku-cell.match:not(.selected)").first()).toHaveCSS("background-color", noteCellBackground);
   expect(await empty.nth(2).evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(noteCellBackground);
   expect(await page.locator(".note-match").count()).toBeGreaterThanOrEqual(2);
-  const matchStyles = await Promise.all([cornerMatch, centreMatch].map((match) => match.evaluate((element) => {
+  const readMatchStyle = (match: typeof cornerMatch) => match.evaluate((element) => {
     const style = getComputedStyle(element);
     return { color: style.color, background: style.backgroundColor, outline: style.outlineStyle, size: Number.parseFloat(style.fontSize), transform: style.transform, weight: Number(style.fontWeight) };
-  })));
+  });
+  let matchStyles: Awaited<ReturnType<typeof readMatchStyle>>[] = [];
+  await expect.poll(async () => {
+    matchStyles = [await readMatchStyle(cornerMatch), await readMatchStyle(centreMatch)];
+    return matchStyles.every((style) => Boolean(style.color));
+  }).toBe(true);
   expect(matchStyles[0].color).not.toBe(matchStyles[1].color);
   for (const style of matchStyles) {
     expect(style.background).toBe("rgba(0, 0, 0, 0)");

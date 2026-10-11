@@ -521,8 +521,11 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
       const luminance = (channels: number[]) => channels.map((channel) => channel / 255).map((channel) => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
       const note = rgb(styles.getPropertyValue("--board-centre-note"));
       const surface = rgb(styles.getPropertyValue("--board"));
+      const match = rgb(styles.getPropertyValue("--board-match"));
       const light = Math.max(luminance(note), luminance(surface));
       const dark = Math.min(luminance(note), luminance(surface));
+      const matchLight = Math.max(luminance(note), luminance(match));
+      const matchDark = Math.min(luminance(note), luminance(match));
       return {
         board: getComputedStyle(document.querySelector<HTMLElement>(".sudoku-board")!).backgroundColor,
         given: getComputedStyle(given).backgroundColor,
@@ -530,7 +533,9 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
         peer: getComputedStyle(peer).backgroundColor,
         givenText: getComputedStyle(given).color,
         centreNote: `rgb(${note.join(", ")})`,
+        match: `rgb(${match.join(", ")})`,
         centreNoteContrast: (light + .05) / (dark + .05),
+        centreNoteMatchContrast: (matchLight + .05) / (matchDark + .05),
       };
     });
   };
@@ -561,8 +566,12 @@ test("Sudoku grid surfaces follow explicit light and dark themes", async ({ page
   expect(dark.givenText).not.toBe(light.givenText);
   expect(dark.centreNote).toBe("rgb(245, 251, 252)");
   expect(light.centreNote).toBe("rgb(21, 33, 38)");
+  expect(dark.match).toBe("rgb(36, 93, 105)");
+  expect(light.match).toBe("rgb(191, 231, 238)");
   expect(dark.centreNoteContrast).toBeGreaterThan(12);
   expect(light.centreNoteContrast).toBeGreaterThan(12);
+  expect(dark.centreNoteMatchContrast).toBeGreaterThan(7);
+  expect(light.centreNoteMatchContrast).toBeGreaterThan(12);
 });
 
 test("import validates uniqueness and creates a client-side share link", async ({ page }) => {

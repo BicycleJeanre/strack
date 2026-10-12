@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { applyColour, clearAllColours, clearColour, clearColours, clearLines, clearLinesByColour, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
+import { applyColour, applyHint as applyGameHint, clearAllColours, clearColour, clearColours, clearLines, clearLinesByColour, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
 import { findHint } from "../src/hint-engine.ts";
 import { applyHint as applyLogicalHint, candidateList, isHintApplicable, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
@@ -50,6 +50,48 @@ test("an applied hint is no longer applicable and cannot be offered again", asyn
   applyLogicalHint(values, eliminated, hint);
   assert.equal(isHintApplicable(values, eliminated, hint), false);
   assert.notEqual(findHint(values, eliminated)?.id, hint.id);
+});
+
+test("the reported live candidate grid cannot produce invisible hint targets", () => {
+  const livePosition = "745280030010056007609070008004092000907010004000740000500020803400860010070035090";
+  const liveSolution = "745281936813956427629374158384692571967513284251748369596127843432869715178435692";
+  const candidateRows = [
+    ["", "", "", "", "", "19", "169", "", "169"],
+    ["238", "", "238", "349", "", "", "249", "24", ""],
+    ["", "23", "", "134", "", "14", "125", "245", ""],
+    ["13", "3568", "", "56", "", "", "13567", "5678", "156"],
+    ["", "23568", "", "56", "", "38", "2356", "2568", ""],
+    ["123", "23568", "1236", "", "", "38", "123569", "2568", "12569"],
+    ["", "69", "16", "149", "", "1479", "", "467", ""],
+    ["", "239", "23", "", "", "79", "257", "", "25"],
+    ["128", "", "1268", "14", "", "", "246", "", "26"],
+  ];
+  const values = [...livePosition].map((value) => value === "0" ? "" : value);
+  const visibleCandidates = candidateRows.flat().map((digits) => [...digits].map(Number));
+
+  const rawHint = findHint(values, [], { solution: liveSolution });
+  assert.equal(rawHint?.technique, "Locked candidates");
+  assert.equal(rawHint?.variant, "claiming");
+  assert.deepEqual(rawHint?.targets, [{ cell: 27, digit: 8 }, { cell: 45, digit: 8 }, { cell: 47, digit: 8 }]);
+  assert.equal(findHint(values, [], { visibleCandidates, solution: liveSolution }), null, "the screenshot's already-absent 8s are not offered again");
+});
+
+test("applying a hint keeps solver eliminations and visible notes in sync", () => {
+  const game = createGame(fixture, 1);
+  game.corner[2] = [4, 7];
+  game.centre[2] = [1, 4, 9];
+  applyGameHint(game, {
+    id: "test-elimination",
+    technique: "Test",
+    summary: "Test",
+    explanation: "Test",
+    kind: "eliminate",
+    evidence: [],
+    targets: [{ cell: 2, digit: 4 }],
+  });
+  assert.deepEqual(game.eliminated[2], [4]);
+  assert.deepEqual(game.corner[2], [7]);
+  assert.deepEqual(game.centre[2], [1, 9]);
 });
 
 test("separate notation modes, multi-cell entry, candidate cleanup, undo and redo are stable", () => {

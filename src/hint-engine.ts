@@ -29,6 +29,11 @@ interface EliminationResult {
     | { type: 2; line: "row" | "col"; digit: number; baseSet: readonly number[]; coverSet: readonly number[] };
 }
 
+interface HintContext {
+  visibleCandidates?: readonly (readonly number[])[];
+  solution?: string;
+}
+
 const EliminationImplicationType = { DigitInHouse: 0, Subset: 1, Fish: 2 } as const;
 
 const coordCell = ([row, column]: readonly [number, number]) => row * 9 + column;
@@ -53,12 +58,18 @@ function commonHouseName(cells: number[]): string {
   return `box ${index - 17}`;
 }
 
-function toGrid(values: readonly string[], eliminated: readonly number[][]): SudokuGrid {
+function toGrid(values: readonly string[], eliminated: readonly number[][], visibleCandidates?: readonly (readonly number[])[]): SudokuGrid {
   const digits = new Map<GridIndex, Digit>();
   const candidates = new Map<GridIndex, readonly Digit[]>();
+  const calculated = values.map((value, cell) => value ? [] : candidateList(values, cell, eliminated));
+  const completeVisibleGrid = Boolean(visibleCandidates) && values.every((value, cell) => {
+    if (value) return true;
+    const shown = visibleCandidates?.[cell] || [];
+    return shown.length > 0 && shown.every((digit) => calculated[cell].includes(digit));
+  });
   for (let cell = 0; cell < 81; cell++) {
     if (values[cell]) digits.set(cell as GridIndex, Number(values[cell]) as Digit);
-    else candidates.set(cell as GridIndex, candidateList(values, cell, eliminated) as Digit[]);
+    else candidates.set(cell as GridIndex, (completeVisibleGrid ? calculated[cell].filter((digit) => visibleCandidates?.[cell]?.includes(digit)) : calculated[cell]) as Digit[]);
   }
   return { digits, candidates };
 }
@@ -120,9 +131,12 @@ function eliminationEvidence(grid: SudokuGrid, result: EliminationResult, target
 function eliminationText(result: EliminationResult, evidence: number[]): { summary: string; explanation: string } {
   const implication = result.implication;
   if (implication?.type === EliminationImplicationType.DigitInHouse) {
+    const pointing = result.technique.includes("Type 1");
     return {
       summary: `${implication.digit} is confined to one intersection inside ${houseName(implication.house.type, implication.house.index)}.`,
-      explanation: "Because every possible position lies in the intersecting house, that candidate can be removed from the rest of the intersection.",
+      explanation: pointing
+        ? "Every position for that candidate in the box lies on one line, so it can be removed from the rest of that line."
+        : "Every position for that candidate on the line lies in one box, so it can be removed from the rest of that box.",
     };
   }
   if (implication?.type === EliminationImplicationType.Subset) {
@@ -145,14 +159,29 @@ function eliminationText(result: EliminationResult, evidence: number[]): { summa
   return { summary: `${result.technique} produces a logical candidate elimination.`, explanation: "Review the highlighted pattern to see why the target candidates cannot remain." };
 }
 
-function eliminationHint(grid: SudokuGrid, result: EliminationResult): Hint | null {
-  const targets = result.eliminations.flatMap(({ digit, coords }) => coords.map((coord) => ({ cell: coordCell(coord), digit })));
+function targetMatchesContext(target: { cell: number; digit: number }, kind: Hint["kind"], context: HintContext): boolean {
+  if (context.solution) {
+    const solvedDigit = Number(context.solution[target.cell]);
+    if (kind === "place" ? solvedDigit !== target.digit : solvedDigit === target.digit) return false;
+  }
+  if (kind === "eliminate") {
+    const shown = context.visibleCandidates?.[target.cell] || [];
+    if (shown.length > 0 && !shown.includes(target.digit)) return false;
+  }
+  return true;
+}
+
+function eliminationHint(grid: SudokuGrid, result: EliminationResult, context: HintContext): Hint | null {
+  const targets = result.eliminations
+    .flatMap(({ digit, coords }) => coords.map((coord) => ({ cell: coordCell(coord), digit })))
+    .filter((target) => targetMatchesContext(target, "eliminate", context));
   if (!targets.length) return null;
   const evidence = eliminationEvidence(grid, result, targets);
   const text = eliminationText(result, evidence);
   return {
     id: `sudoku-master-${result.technique}-${targets.map(({ cell, digit }) => `${cell}-${digit}`).join("-")}`,
     technique: titleCaseTechnique(result.technique),
+    variant: result.technique.includes("Locked Candidates Type 1") ? "pointing" : result.technique.includes("Locked Candidates Type 2") ? "claiming" : undefined,
     summary: text.summary,
     explanation: text.explanation,
     kind: "eliminate",
@@ -161,12 +190,14 @@ function eliminationHint(grid: SudokuGrid, result: EliminationResult): Hint | nu
   };
 }
 
-export function findHint(values: readonly string[], eliminated: readonly number[][] = []): Hint | null {
-  const grid = toGrid(values, eliminated);
+export function findHint(values: readonly string[], eliminated: readonly number[][] = [], context: HintContext = {}): Hint | null {
+  const grid = toGrid(values, eliminated, context.visibleCandidates);
   const solvingFinders = [solveFullHouse, solveLastDigit, solveNakedSingle, solveHiddenSingle];
   for (const finder of solvingFinders) {
-    const result = finder(grid)[0];
-    if (result) return solvingHint(grid, result);
+    for (const result of finder(grid)) {
+      const hint = solvingHint(grid, result);
+      if (hint.targets.every((target) => targetMatchesContext(target, "place", context))) return hint;
+    }
   }
 
   const eliminationFinders = [
@@ -182,8 +213,10 @@ export function findHint(values: readonly string[], eliminated: readonly number[
     () => eliminateBasicFish(grid, SubsetType.Quadruple),
   ];
   for (const finder of eliminationFinders) {
-    const result = finder()[0];
-    if (result) return eliminationHint(grid, result);
+    for (const result of finder()) {
+      const hint = eliminationHint(grid, result, context);
+      if (hint) return hint;
+    }
   }
   return null;
 }

@@ -110,10 +110,17 @@ export function isHintApplicable(
   values: readonly string[],
   eliminated: readonly number[][],
   hint: Hint,
+  context: { visibleCandidates?: readonly (readonly number[])[]; solution?: string } = {},
 ): boolean {
-  return hint.targets.length > 0 && hint.targets.every(({ cell, digit }) =>
-    !values[cell] && candidateList(values, cell, eliminated).includes(digit),
-  );
+  return hint.targets.length > 0 && hint.targets.every(({ cell, digit }) => {
+    if (values[cell] || !candidateList(values, cell, eliminated).includes(digit)) return false;
+    if (context.solution) {
+      const solvedDigit = Number(context.solution[cell]);
+      if (hint.kind === "place" ? solvedDigit !== digit : solvedDigit === digit) return false;
+    }
+    const shown = context.visibleCandidates?.[cell] || [];
+    return hint.kind !== "eliminate" || shown.length === 0 || shown.includes(digit);
+  });
 }
 
 export function applyHint(

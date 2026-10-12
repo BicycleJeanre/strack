@@ -110,6 +110,7 @@ export interface AppData {
 export interface Hint {
   id: string;
   technique: string;
+  variant?: "pointing" | "claiming";
   summary: string;
   explanation: string;
   kind: "place" | "eliminate";

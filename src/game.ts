@@ -216,9 +216,24 @@ export function redo(game: Game): boolean {
   return true;
 }
 
-export function applyHint(game: Game, hint: Hint) {
+export function applyHint(game: Game, hint: Hint, cleanCandidates = true) {
   startChange(game);
   applyLogicalHint(game.values, game.eliminated, hint);
+  for (const { cell, digit } of hint.targets) {
+    if (hint.kind === "eliminate") {
+      game.corner[cell] = game.corner[cell].filter((value) => value !== digit);
+      game.centre[cell] = game.centre[cell].filter((value) => value !== digit);
+      continue;
+    }
+    game.corner[cell] = [];
+    game.centre[cell] = [];
+    if (cleanCandidates) {
+      for (const peer of peers[cell]) {
+        game.corner[peer] = game.corner[peer].filter((value) => value !== digit);
+        game.centre[peer] = game.centre[peer].filter((value) => value !== digit);
+      }
+    }
+  }
   completeIfSolved(game);
 }
 

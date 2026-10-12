@@ -586,6 +586,49 @@ test("an already-applied saved hint is not reopened after restart", async ({ pag
   await expect(page.getByRole("button", { name: "Previous hints (1)" })).toBeVisible();
 });
 
+test("locked-candidate hints use the right direction and never target absent centre notes", async ({ page }) => {
+  const reportedPosition = "745280030010056007609070008004092000907010004000740000500020803400860010070035090";
+  await page.getByRole("button", { name: "Open" }).click();
+  await page.getByLabel("81-character puzzle").fill(reportedPosition);
+  await page.getByRole("button", { name: "Validate puzzle" }).click();
+  await page.getByRole("button", { name: "Play now" }).click();
+  await page.getByRole("button", { name: "Calculate all candidates" }).click();
+
+  await page.getByRole("button", { name: "Get a logical hint" }).click();
+  await expect(page.locator(".hint-panel")).toContainText("A candidate on a line is confined to one box.");
+  await page.getByRole("button", { name: "Show answer" }).click();
+  await expect(page.locator(".hint-answer")).toContainText("Remove 8 from Row 4, column 1");
+  await page.getByRole("button", { name: "Dismiss hint" }).click();
+
+  const reportedCandidates = [
+    ["", "", "", "", "", "19", "169", "", "169"], ["238", "", "238", "349", "", "", "249", "24", ""],
+    ["", "23", "", "134", "", "14", "125", "245", ""], ["13", "3568", "", "56", "", "", "13567", "5678", "156"],
+    ["", "23568", "", "56", "", "38", "2356", "2568", ""], ["123", "23568", "1236", "", "", "38", "123569", "2568", "12569"],
+    ["", "69", "16", "149", "", "1479", "", "467", ""], ["", "239", "23", "", "", "79", "257", "", "25"],
+    ["128", "", "1268", "14", "", "", "246", "", "26"],
+  ].flat().map((digits) => [...digits].map(Number));
+  await page.evaluate(async (centre) => {
+    const request = indexedDB.open("strack-v1");
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const transaction = db.transaction("state", "readwrite");
+    const store = transaction.objectStore("state");
+    const data = await new Promise<any>((resolve, reject) => { const get = store.get("app"); get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error); });
+    const game = data.games[data.activeGameId];
+    game.centre = centre;
+    game.eliminated = Array.from({ length: 81 }, () => []);
+    game.hintStage = "none";
+    game.hintId = null;
+    store.put(data, "app");
+    await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
+    db.close();
+  }, reportedCandidates);
+  await page.reload();
+  await page.locator("[data-game]").first().click();
+  await expect(page.locator('[data-cell="27"] .centre-marks')).toHaveText("13");
+  await page.getByRole("button", { name: "Get a logical hint" }).click();
+  await expect(page.locator(".hint-panel")).toHaveCount(0);
+});
+
 test("settings persist theme and help explains notation, ratings, offline use and backups", async ({ page }) => {
   await page.getByRole("button", { name: "Settings and help" }).click();
   await page.getByLabel("Theme").selectOption("light");

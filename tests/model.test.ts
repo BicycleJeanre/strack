@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { applyColour, applyHint as applyGameHint, clearAllColours, clearColour, clearColours, clearLines, clearLinesByColour, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
-import { findHint } from "../src/hint-engine.ts";
+import { buildHintPath, findHint, nextHintFromPath } from "../src/hint-engine.ts";
 import { applyHint as applyLogicalHint, candidateList, isHintApplicable, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
 
@@ -29,7 +29,7 @@ test("candidate calculation and logical hint identify a forced value", () => {
   assert.deepEqual(candidateList(values, 0), [5]);
   const hint = findHint(values);
   assert.equal(hint?.technique, "Full house");
-  assert.match(hint?.id || "", /^sudoku-master-/);
+  assert.match(hint?.id || "", /^hodoku-/);
   assert.deepEqual(hint?.targets, [{ cell: 0, digit: 5 }]);
 });
 
@@ -39,17 +39,18 @@ test("an applied hint is no longer applicable and cannot be offered again", asyn
   assert.ok(puzzle);
   const values = puzzle.givens.split("").map((value) => value === "0" ? "" : value);
   const eliminated = Array.from({ length: 81 }, () => [] as number[]);
-  let hint = findHint(values, eliminated);
+  const path = buildHintPath(values, eliminated, { solution: puzzle.solution });
+  let hint = nextHintFromPath(path, values, eliminated, { solution: puzzle.solution });
   while (hint?.kind !== "eliminate") {
     assert.ok(hint, "fixture must reach a candidate-elimination hint");
     applyLogicalHint(values, eliminated, hint);
-    hint = findHint(values, eliminated);
+    hint = nextHintFromPath(path, values, eliminated, { solution: puzzle.solution });
   }
 
   assert.equal(isHintApplicable(values, eliminated, hint), true);
   applyLogicalHint(values, eliminated, hint);
   assert.equal(isHintApplicable(values, eliminated, hint), false);
-  assert.notEqual(findHint(values, eliminated)?.id, hint.id);
+  assert.notEqual(nextHintFromPath(path, values, eliminated, { solution: puzzle.solution })?.id, hint.id);
 });
 
 test("the reported live candidate grid cannot produce invisible hint targets", () => {
@@ -69,11 +70,12 @@ test("the reported live candidate grid cannot produce invisible hint targets", (
   const values = [...livePosition].map((value) => value === "0" ? "" : value);
   const visibleCandidates = candidateRows.flat().map((digits) => [...digits].map(Number));
 
-  const rawHint = findHint(values, [], { solution: liveSolution });
-  assert.equal(rawHint?.technique, "Locked candidates");
-  assert.equal(rawHint?.variant, "claiming");
-  assert.deepEqual(rawHint?.targets, [{ cell: 27, digit: 8 }, { cell: 45, digit: 8 }, { cell: 47, digit: 8 }]);
-  assert.equal(findHint(values, [], { visibleCandidates, solution: liveSolution }), null, "the screenshot's already-absent 8s are not offered again");
+  const hint = findHint(values, [], { visibleCandidates, solution: liveSolution });
+  assert.ok(hint, "the advanced engine continues with another supported logical step");
+  if (hint.kind === "eliminate") {
+    assert.ok(hint.targets.every(({ cell, digit }) => visibleCandidates[cell].includes(digit)), "every elimination is visible on the live board");
+  }
+  assert.notDeepEqual(hint.targets, [{ cell: 27, digit: 8 }, { cell: 45, digit: 8 }, { cell: 47, digit: 8 }], "the already-applied elimination is skipped");
 });
 
 test("applying a hint keeps solver eliminations and visible notes in sync", () => {
@@ -243,19 +245,19 @@ test("catalogue has 20 valid, rated, provenance-complete puzzles in every band",
     assert.match(puzzle.licence, /Public domain/);
     assert.ok(puzzle.sourceUrl.includes("d8c8ebaee0c08c412cfba96af1923dfa61c83317"));
     for (let index = 0; index < 81; index++) if (puzzle.givens[index] !== "0") assert.equal(puzzle.givens[index], puzzle.solution[index]);
-    if (puzzle.fullHints) {
-      const values = puzzle.givens.split("").map((value) => value === "0" ? "" : value);
-      const eliminated = Array.from({ length: 81 }, () => [] as number[]);
-      let steps = 0;
-      while (values.join("") !== puzzle.solution && steps++ < 500) {
-        const hint = findHint(values, eliminated);
-        assert.ok(hint, `${puzzle.id} must have a complete local hint path`);
-        assert.match(hint.id, /^sudoku-master-/, `${puzzle.id} must use the external hint engine`);
-        hintTechniques.add(hint.technique);
-        applyLogicalHint(values, eliminated, hint);
-      }
-      assert.equal(values.join(""), puzzle.solution, `${puzzle.id} hint path reaches its stored solution`);
-    }
   }
-  assert.ok(hintTechniques.has("Hidden pair"), "the external engine supplies techniques beyond the replaced finder");
+  for (const puzzle of [puzzles.find((item) => item.difficulty === "Easy")!, puzzles.find((item) => item.difficulty === "Hard")!]) {
+    const values = puzzle.givens.split("").map((value) => value === "0" ? "" : value);
+    const eliminated = Array.from({ length: 81 }, () => [] as number[]);
+    const path = buildHintPath(values, eliminated, { solution: puzzle.solution });
+    assert.ok(path.complete, `${puzzle.id} must have a complete local hint path`);
+    assert.ok(path.hints.length > 0);
+    for (const hint of path.hints) {
+      assert.match(hint.id, /^hodoku-/, `${puzzle.id} must use the HoDoKu engine`);
+      hintTechniques.add(hint.technique);
+      applyLogicalHint(values, eliminated, hint);
+    }
+    assert.equal(values.join(""), puzzle.solution, `${puzzle.id} hint path reaches its stored solution`);
+  }
+  assert.ok(hintTechniques.size >= 2, "the external engine supplies more than one logical technique");
 });

@@ -91,11 +91,19 @@ test("cloud encoding preserves multiple colours and line annotations without nes
   game.challenge = { cadence: "daily", periodKey: "2026-10-10" };
   game.colours[0] = ["cyan", "amber", "indigo"];
   game.lines = [{ from: 0, to: 10, colour: "rose" }];
+  game.hintPath = {
+    engine: "HoDoKu TS test",
+    generatedAt: 701,
+    complete: true,
+    hints: [{ id: "hodoku-test", technique: "Naked single", summary: "Test", explanation: "Test", kind: "place", evidence: [1], targets: [{ cell: 0, digit: 1 }] }],
+  };
   const encoded = encodeCloudGame(game);
   assert.equal(encoded.colours[0], "cyan|amber|indigo");
   assert.deepEqual(encoded.lines, [{ from: 0, to: 10, colour: "rose" }]);
+  assert.equal(typeof encoded.hintPath, "string", "nested hint data is serialized for Firestore");
   const decoded = decodeCloudGame(encoded);
   assert.deepEqual(decoded?.colours[0], ["cyan", "amber", "indigo"]);
   assert.deepEqual(decoded?.lines, [{ from: 0, to: 10, colour: "rose" }]);
   assert.deepEqual(decoded?.challenge, { cadence: "daily", periodKey: "2026-10-10" });
+  assert.deepEqual(decoded?.hintPath, game.hintPath, "cached logical paths sync with the puzzle session");
 });

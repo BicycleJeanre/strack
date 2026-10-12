@@ -73,11 +73,12 @@ type CloudSnapshot = Omit<BoardSnapshot, "corner" | "centre" | "colours" | "elim
   eliminated: string[];
 };
 
-type CloudGame = Omit<Game, "corner" | "centre" | "colours" | "eliminated" | "history" | "future" | "hintHistory"> & CloudSnapshot & {
+type CloudGame = Omit<Game, "corner" | "centre" | "colours" | "eliminated" | "history" | "future" | "hintHistory" | "hintPath"> & CloudSnapshot & {
   version: 1;
   history: string[];
   future: string[];
   hintHistory: string[];
+  hintPath?: string;
 };
 
 const encodeMarks = (marks: number[][]) => marks.map((digits) => [...digits].sort().join(""));
@@ -111,6 +112,7 @@ export function encodeCloudGame(game: Game): CloudGame {
     history: game.history.slice(-80).map((snapshot) => JSON.stringify(encodeSnapshot(snapshot))),
     future: game.future.slice(-80).map((snapshot) => JSON.stringify(encodeSnapshot(snapshot))),
     hintHistory: game.hintHistory.slice(-40).map((hint) => JSON.stringify(hint)),
+    hintPath: game.hintPath ? JSON.stringify(game.hintPath) : undefined,
   };
 }
 
@@ -121,11 +123,15 @@ export function decodeCloudGame(value: unknown): Game | null {
   const history = game.history.map(decodeSnapshot);
   const future = game.future.map(decodeSnapshot);
   let hintHistory: Game["hintHistory"] = [];
-  try { hintHistory = (game.hintHistory || []).map((hint) => JSON.parse(hint)); }
+  let hintPath: Game["hintPath"];
+  try {
+    hintHistory = (game.hintHistory || []).map((hint) => JSON.parse(hint));
+    hintPath = game.hintPath ? JSON.parse(game.hintPath) : undefined;
+  }
   catch { return null; }
   if (history.some((item) => !item) || future.some((item) => !item) || hintHistory.length > 40) return null;
   const { version: _version, ...rest } = game;
-  return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), colours: decodeColours(game.colours), eliminated: decodeMarks(game.eliminated), lines: Array.isArray(game.lines) ? game.lines : [], history: history as BoardSnapshot[], future: future as BoardSnapshot[], hintHistory };
+  return { ...rest, corner: decodeMarks(game.corner), centre: decodeMarks(game.centre), colours: decodeColours(game.colours), eliminated: decodeMarks(game.eliminated), lines: Array.isArray(game.lines) ? game.lines : [], history: history as BoardSnapshot[], future: future as BoardSnapshot[], hintHistory, hintPath };
 }
 
 type CloudSettings = { preferences: Preferences; activeGameId: string | null; deletedGames?: Record<string, number>; trainingProgress?: TrainingProgress; updatedAt: number };

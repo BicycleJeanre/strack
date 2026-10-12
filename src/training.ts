@@ -1,6 +1,6 @@
-import { findHint } from "./hint-engine.ts";
+import { buildHintPath } from "./hint-engine.ts";
 import { applyHint, candidateList } from "./sudoku.ts";
-import type { Hint, Puzzle, TrainingTechniqueId } from "./types.ts";
+import type { Hint, HintPath, Puzzle, TrainingTechniqueId } from "./types.ts";
 
 export interface TrainingTechnique {
   id: TrainingTechniqueId;
@@ -90,6 +90,7 @@ const authoredPositions = new Map<TrainingTechniqueId, TrainingPosition>([
 ]);
 
 const positionCache = new Map<TrainingTechniqueId, TrainingPosition>();
+const cataloguePathCache = new Map<string, HintPath>();
 
 export function trainingTechnique(id: TrainingTechniqueId) { return TRAINING_TECHNIQUES.find((technique) => technique.id === id)!; }
 
@@ -103,9 +104,12 @@ export function findTrainingPosition(id: TrainingTechniqueId, catalogue: Puzzle[
   for (const puzzle of catalogue.filter((item) => item.fullHints)) {
     const values = puzzle.givens.split("").map((value) => value === "0" ? "" : value);
     const eliminated = Array.from({ length: 81 }, () => [] as number[]);
-    for (let step = 0; step < 200; step++) {
-      const hint = findHint(values, eliminated);
-      if (!hint) break;
+    let path = cataloguePathCache.get(puzzle.id);
+    if (!path) {
+      path = buildHintPath(values, eliminated, { solution: puzzle.solution });
+      cataloguePathCache.set(puzzle.id, path);
+    }
+    for (const hint of path.hints) {
       if (hint.technique === techniqueName) {
         const position = { puzzle, origin: `Bundled ${puzzle.source} puzzle`, values: [...values], eliminated: eliminated.map((digits) => [...digits]), candidates: Array.from({ length: 81 }, (_, index) => candidateList(values, index, eliminated)), hint };
         positionCache.set(id, position);

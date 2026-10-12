@@ -7,6 +7,10 @@ const commit = "d8c8ebaee0c08c412cfba96af1923dfa61c83317";
 const catalogueVersion = "2026.10.09+bank.d8c8eba";
 const bands = ["easy", "medium", "hard", "diabolical"];
 const labels = { easy: "Easy", medium: "Medium", hard: "Hard", diabolical: "Diabolical" };
+const incompleteHintPaths = new Set([
+  "00015097c6c3", "0001d2888928", "00035f2db993", "000673abbc89", "0006848206bf",
+  "000756d0f0f7", "00076ba18179", "0007ac38ad81", "000885973139", "000a8d1be106",
+]);
 
 function candidates(board, cell) {
   const row = Math.floor(cell / 9);
@@ -72,7 +76,8 @@ for (const band of bands) {
       ratingVersion: `Upstream engine build not disclosed; bank snapshot ${commit.slice(0, 8)}`,
       difficulty: labels[band],
       catalogueVersion,
-      fullHints: band !== "diabolical",
+      // Audited with HoDoKu TS e5b01c91 on 2026-10-12.
+      fullHints: !incompleteHintPaths.has(hash),
     });
   }
 }

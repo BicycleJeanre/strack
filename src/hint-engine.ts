@@ -1,162 +1,104 @@
-import sudokuMaster, { type Digit, type GridIndex, type SudokuGrid } from "sudoku-master";
-import { boxes, candidateList, columns, rows, units } from "./sudoku.ts";
-import type { Hint } from "./types.ts";
+import { Board, solve, type Hint as HoDoKuHint } from "../vendor/hodoku-ts/dist/index.js";
+import { candidateList, units } from "./sudoku.ts";
+import type { Hint, HintPath } from "./types.ts";
 
-const {
-  SubsetType,
-  eliminateBasicFish,
-  eliminateHiddenSubset,
-  eliminateLockedCandidates,
-  eliminateNakedSubset,
-  solveFullHouse,
-  solveHiddenSingle,
-  solveLastDigit,
-  solveNakedSingle,
-} = sudokuMaster;
-
-interface SolvingResult {
-  technique: "Full House" | "Last Digit" | "Naked Single" | "Hidden Single";
-  coord: readonly [number, number];
-  digit: number;
-}
-
-interface EliminationResult {
-  technique: string;
-  eliminations: ReadonlyArray<{ digit: number; coords: ReadonlyArray<readonly [number, number]> }>;
-  implication?:
-    | { type: 0; digit: number; house: { type: "row" | "col" | "box"; index: number; cells: readonly number[] } }
-    | { type: 1; cells: ReadonlyArray<readonly [number, number]>; digits: readonly number[] }
-    | { type: 2; line: "row" | "col"; digit: number; baseSet: readonly number[]; coverSet: readonly number[] };
-}
+export const HINT_ENGINE = "HoDoKu TS e5b01c91";
 
 interface HintContext {
   visibleCandidates?: readonly (readonly number[])[];
   solution?: string;
 }
 
-const EliminationImplicationType = { DigitInHouse: 0, Subset: 1, Fish: 2 } as const;
+const forbiddenTechniques = new Set(["BRUTE_FORCE", "GIVE_UP", "INCOMPLETE"]);
 
-const coordCell = ([row, column]: readonly [number, number]) => row * 9 + column;
-const titleCaseTechnique = (technique: string) => technique
-  .replace(/^Locked Candidates Type \d \((Pointing|Claiming)\)$/, "Locked candidates")
-  .replace(/^(Full House|Last Digit|Naked Single|Hidden Single|Naked Pair|Naked Triple|Naked Quadruple|Hidden Pair|Hidden Triple|Hidden Quadruple|Locked Pair|Locked Triple)$/, (name) => name[0] + name.slice(1).toLowerCase());
-
-function houseCells(type: "row" | "col" | "box", index: number): number[] {
-  return type === "row" ? rows[index] : type === "col" ? columns[index] : boxes[index];
-}
-
-function houseName(type: "row" | "col" | "box", index: number): string {
-  return `${type === "col" ? "column" : type} ${index + 1}`;
-}
-
-function commonHouseName(cells: number[]): string {
-  const unit = units.find((candidate) => cells.every((cell) => candidate.includes(cell)));
-  if (!unit) return "the highlighted unit";
-  const index = units.indexOf(unit);
-  if (index < 9) return `row ${index + 1}`;
-  if (index < 18) return `column ${index - 8}`;
-  return `box ${index - 17}`;
-}
-
-function toGrid(values: readonly string[], eliminated: readonly number[][], visibleCandidates?: readonly (readonly number[])[]): SudokuGrid {
-  const digits = new Map<GridIndex, Digit>();
-  const candidates = new Map<GridIndex, readonly Digit[]>();
+function liveCandidates(
+  values: readonly string[],
+  eliminated: readonly number[][],
+  visibleCandidates?: readonly (readonly number[])[],
+): number[][] {
   const calculated = values.map((value, cell) => value ? [] : candidateList(values, cell, eliminated));
   const completeVisibleGrid = Boolean(visibleCandidates) && values.every((value, cell) => {
     if (value) return true;
     const shown = visibleCandidates?.[cell] || [];
     return shown.length > 0 && shown.every((digit) => calculated[cell].includes(digit));
   });
+  return calculated.map((candidates, cell) => completeVisibleGrid
+    ? candidates.filter((digit) => visibleCandidates?.[cell]?.includes(digit))
+    : candidates);
+}
+
+function toBoard(
+  values: readonly string[],
+  eliminated: readonly number[][],
+  visibleCandidates?: readonly (readonly number[])[],
+): Board | null {
+  const board = Board.fromValues(values.map((value) => Number(value) || 0), false);
+  const candidates = liveCandidates(values, eliminated, visibleCandidates);
   for (let cell = 0; cell < 81; cell++) {
-    if (values[cell]) digits.set(cell as GridIndex, Number(values[cell]) as Digit);
-    else candidates.set(cell as GridIndex, (completeVisibleGrid ? calculated[cell].filter((digit) => visibleCandidates?.[cell]?.includes(digit)) : calculated[cell]) as Digit[]);
+    if (values[cell]) continue;
+    if (!candidates[cell].length) return null;
+    for (let digit = 1; digit <= 9; digit++) {
+      if (!candidates[cell].includes(digit) && !board.setCandidate(cell, digit, false)) return null;
+    }
   }
-  return { digits, candidates };
+  return board;
 }
 
-function solvingEvidence(grid: SudokuGrid, result: SolvingResult): number[] {
-  const cell = coordCell(result.coord);
-  if (result.technique === "Last Digit") {
-    return [...grid.digits.entries()].filter(([, digit]) => digit === result.digit).map(([index]) => index);
-  }
-  if (result.technique === "Full House") {
-    return units.find((unit) => unit.includes(cell) && unit.filter((index) => grid.digits.has(index as GridIndex)).length === 8)?.filter((index) => index !== cell) || [];
-  }
-  if (result.technique === "Hidden Single") {
-    return units.find((unit) => unit.includes(cell) && unit.filter((index) => grid.candidates.get(index as GridIndex)?.includes(result.digit as Digit)).length === 1)?.filter((index) => index !== cell) || [];
-  }
-  return units.flatMap((unit) => unit.includes(cell) ? unit : []).filter((index, position, all) => index !== cell && grid.digits.has(index as GridIndex) && all.indexOf(index) === position);
+function unique(items: number[]): number[] {
+  return [...new Set(items.filter((cell) => cell >= 0 && cell < 81))];
 }
 
-function solvingHint(grid: SudokuGrid, result: SolvingResult): Hint {
-  const cell = coordCell(result.coord);
-  const technique = titleCaseTechnique(result.technique);
-  const location = `row ${result.coord[0] + 1}, column ${result.coord[1] + 1}`;
-  const summary = result.technique === "Full House"
-    ? `${result.digit} is the only digit missing from a highlighted unit.`
-    : result.technique === "Last Digit"
-      ? `${result.digit} has only one remaining home in the grid.`
-      : result.technique === "Hidden Single"
-        ? `${result.digit} has only one possible home in a highlighted unit.`
-        : `Only ${result.digit} can fit in ${location}.`;
-  const explanation = result.technique === "Naked Single"
-    ? "Every other digit has been removed from this cell by its row, column, box, or earlier logical deductions."
-    : "The highlighted placed digits and candidates leave exactly one logical placement.";
-  return {
-    id: `sudoku-master-${result.technique}-${cell}-${result.digit}`,
-    technique,
-    summary,
-    explanation,
-    kind: "place",
-    evidence: solvingEvidence(grid, result),
-    targets: [{ cell, digit: result.digit }],
+function singleEvidence(
+  technique: string,
+  cell: number,
+  digit: number,
+  values: readonly string[],
+  candidates: readonly number[][],
+): number[] {
+  if (technique === "FULL_HOUSE") {
+    return units.find((unit) => unit.includes(cell) && unit.filter((index) => values[index]).length === 8)?.filter((index) => index !== cell) || [];
+  }
+  if (technique === "HIDDEN_SINGLE") {
+    return units.find((unit) => unit.includes(cell) && unit.filter((index) => !values[index] && candidates[index].includes(digit)).length === 1)?.filter((index) => index !== cell) || [];
+  }
+  if (technique === "NAKED_SINGLE") {
+    return unique(units.flatMap((unit) => unit.includes(cell) ? unit : []).filter((index) => index !== cell && values[index]));
+  }
+  return [];
+}
+
+function techniqueName(hint: HoDoKuHint): { name: string; variant?: "pointing" | "claiming" } {
+  if (hint.technique === "LOCKED_CANDIDATES_1") return { name: "Locked candidates", variant: "pointing" };
+  if (hint.technique === "LOCKED_CANDIDATES_2") return { name: "Locked candidates", variant: "claiming" };
+  const simple: Record<string, string> = {
+    FULL_HOUSE: "Full house",
+    NAKED_SINGLE: "Naked single",
+    HIDDEN_SINGLE: "Hidden single",
+    NAKED_PAIR: "Naked pair",
+    NAKED_TRIPLE: "Naked triple",
+    NAKED_QUADRUPLE: "Naked quadruple",
+    HIDDEN_PAIR: "Hidden pair",
+    HIDDEN_TRIPLE: "Hidden triple",
+    HIDDEN_QUADRUPLE: "Hidden quadruple",
+    LOCKED_PAIR: "Locked pair",
+    LOCKED_TRIPLE: "Locked triple",
   };
+  return { name: simple[hint.technique] || hint.name };
 }
 
-function eliminationEvidence(grid: SudokuGrid, result: EliminationResult, targets: Hint["targets"]): number[] {
-  const implication = result.implication;
-  if (!implication) return [...new Set(targets.map(({ cell }) => cell))];
-  if (implication.type === EliminationImplicationType.DigitInHouse) {
-    return houseCells(implication.house.type, implication.house.index)
-      .filter((cell) => grid.candidates.get(cell as GridIndex)?.includes(implication.digit as Digit));
-  }
-  if (implication.type === EliminationImplicationType.Subset) return implication.cells.map(coordCell);
-  const baseType = implication.line;
-  const coverType = baseType === "row" ? "col" : "row";
-  return implication.baseSet.flatMap((base) => implication.coverSet
-    .map((cover) => baseType === "row" ? base * 9 + cover : cover * 9 + base)
-    .filter((cell) => grid.candidates.get(cell as GridIndex)?.includes(implication.digit as Digit)));
-}
-
-function eliminationText(result: EliminationResult, evidence: number[]): { summary: string; explanation: string } {
-  const implication = result.implication;
-  if (implication?.type === EliminationImplicationType.DigitInHouse) {
-    const pointing = result.technique.includes("Type 1");
-    return {
-      summary: `${implication.digit} is confined to one intersection inside ${houseName(implication.house.type, implication.house.index)}.`,
-      explanation: pointing
-        ? "Every position for that candidate in the box lies on one line, so it can be removed from the rest of that line."
-        : "Every position for that candidate on the line lies in one box, so it can be removed from the rest of that box.",
-    };
-  }
-  if (implication?.type === EliminationImplicationType.Subset) {
-    const digits = implication.digits.join(", ");
-    return {
-      summary: `${digits} form a ${titleCaseTechnique(result.technique).toLowerCase()} in ${commonHouseName(evidence)}.`,
-      explanation: result.technique.startsWith("Hidden")
-        ? "Those digits have no other homes in the unit, so every other candidate can be removed from the highlighted cells."
-        : "Those digits must occupy the highlighted cells, so they can be removed from every other cell in the unit.",
-    };
-  }
-  if (implication?.type === EliminationImplicationType.Fish) {
-    const base = implication.line === "row" ? "rows" : "columns";
-    const cover = implication.line === "row" ? "columns" : "rows";
-    return {
-      summary: `${implication.digit} forms a ${result.technique} across ${base} ${implication.baseSet.map((index) => index + 1).join(", ")}.`,
-      explanation: `Those ${base} restrict the candidate to the same ${cover}, so it can be removed elsewhere in the cover set.`,
-    };
-  }
-  return { summary: `${result.technique} produces a logical candidate elimination.`, explanation: "Review the highlighted pattern to see why the target candidates cannot remain." };
+function evidenceFor(hint: HoDoKuHint, targets: Hint["targets"], values: readonly string[], candidates: readonly number[][]): number[] {
+  const raw = hint.raw;
+  const evidence = [
+    ...raw.indices,
+    ...raw.fins.map(({ index }) => index),
+    ...raw.endoFins.map(({ index }) => index),
+    ...raw.cannibalistic.map(({ index }) => index),
+    ...raw.alses.flatMap(({ indices }) => indices),
+    ...hint.links.flatMap(({ from, to }) => [from.index, to.index]),
+  ];
+  if (hint.placements.length === 1) evidence.push(...singleEvidence(hint.technique, hint.placements[0].index, hint.placements[0].value, values, candidates));
+  const targetCells = new Set(targets.map(({ cell }) => cell));
+  return unique(evidence).filter((cell) => !targetCells.has(cell));
 }
 
 function targetMatchesContext(target: { cell: number; digit: number }, kind: Hint["kind"], context: HintContext): boolean {
@@ -171,52 +113,69 @@ function targetMatchesContext(target: { cell: number; digit: number }, kind: Hin
   return true;
 }
 
-function eliminationHint(grid: SudokuGrid, result: EliminationResult, context: HintContext): Hint | null {
-  const targets = result.eliminations
-    .flatMap(({ digit, coords }) => coords.map((coord) => ({ cell: coordCell(coord), digit })))
-    .filter((target) => targetMatchesContext(target, "eliminate", context));
+function convertHint(hint: HoDoKuHint, values: readonly string[], candidates: readonly number[][], context: HintContext): Hint | null {
+  const kind: Hint["kind"] = hint.placements.length ? "place" : "eliminate";
+  const sourceTargets = kind === "place" ? hint.placements : hint.eliminations;
+  const targets = sourceTargets
+    .map(({ index, value }) => ({ cell: index, digit: value }))
+    .filter((target) => targetMatchesContext(target, kind, context));
   if (!targets.length) return null;
-  const evidence = eliminationEvidence(grid, result, targets);
-  const text = eliminationText(result, evidence);
+  const technique = techniqueName(hint);
+  const targetKey = targets.map(({ cell, digit }) => `${cell}-${digit}`).join("-");
   return {
-    id: `sudoku-master-${result.technique}-${targets.map(({ cell, digit }) => `${cell}-${digit}`).join("-")}`,
-    technique: titleCaseTechnique(result.technique),
-    variant: result.technique.includes("Locked Candidates Type 1") ? "pointing" : result.technique.includes("Locked Candidates Type 2") ? "claiming" : undefined,
-    summary: text.summary,
-    explanation: text.explanation,
-    kind: "eliminate",
-    evidence,
+    id: `hodoku-${hint.technique}-${targetKey}`,
+    technique: technique.name,
+    variant: technique.variant,
+    summary: `${technique.name} produces the next logical ${kind === "place" ? "placement" : "candidate elimination"}.`,
+    explanation: hint.explanation,
+    kind,
+    evidence: evidenceFor(hint, targets, values, candidates),
     targets,
+    links: hint.links.map(({ from, to, strong }) => ({
+      from: { cell: from.index, digit: from.value },
+      to: { cell: to.index, digit: to.value },
+      strong,
+    })),
   };
 }
 
-export function findHint(values: readonly string[], eliminated: readonly number[][] = [], context: HintContext = {}): Hint | null {
-  const grid = toGrid(values, eliminated, context.visibleCandidates);
-  const solvingFinders = [solveFullHouse, solveLastDigit, solveNakedSingle, solveHiddenSingle];
-  for (const finder of solvingFinders) {
-    for (const result of finder(grid)) {
-      const hint = solvingHint(grid, result);
-      if (hint.targets.every((target) => targetMatchesContext(target, "place", context))) return hint;
+export function buildHintPath(values: readonly string[], eliminated: readonly number[][] = [], context: HintContext = {}): HintPath {
+  const generatedAt = Date.now();
+  if (context.solution && values.some((value, cell) => value && value !== context.solution?.[cell])) {
+    return { engine: HINT_ENGINE, generatedAt, complete: false, hints: [] };
+  }
+  const board = toBoard(values, eliminated, context.visibleCandidates);
+  if (!board) return { engine: HINT_ENGINE, generatedAt, complete: false, hints: [] };
+  const result = solve(board);
+  const forbiddenIndex = result.steps.findIndex((step) => forbiddenTechniques.has(step.technique));
+  const logical = result.steps.slice(0, forbiddenIndex < 0 ? result.steps.length : forbiddenIndex);
+  const pathValues = [...values];
+  const pathEliminated = Array.from({ length: 81 }, (_, cell) => [...(eliminated[cell] || [])]);
+  const hints: Hint[] = [];
+  for (const step of logical) {
+    const pathCandidates = liveCandidates(pathValues, pathEliminated);
+    const hint = convertHint(step, pathValues, pathCandidates, context);
+    if (!hint) continue;
+    hints.push(hint);
+    for (const { cell, digit } of hint.targets) {
+      if (hint.kind === "place") pathValues[cell] = String(digit);
+      else if (!pathEliminated[cell].includes(digit)) pathEliminated[cell].push(digit);
     }
   }
+  return { engine: HINT_ENGINE, generatedAt, complete: result.solved && forbiddenIndex < 0, hints };
+}
 
-  const eliminationFinders = [
-    () => eliminateLockedCandidates(grid),
-    () => eliminateNakedSubset(grid, SubsetType.Pair),
-    () => eliminateHiddenSubset(grid, SubsetType.Pair),
-    () => eliminateNakedSubset(grid, SubsetType.Triple),
-    () => eliminateHiddenSubset(grid, SubsetType.Triple),
-    () => eliminateNakedSubset(grid, SubsetType.Quadruple),
-    () => eliminateHiddenSubset(grid, SubsetType.Quadruple),
-    () => eliminateBasicFish(grid, SubsetType.Pair),
-    () => eliminateBasicFish(grid, SubsetType.Triple),
-    () => eliminateBasicFish(grid, SubsetType.Quadruple),
-  ];
-  for (const finder of eliminationFinders) {
-    for (const result of finder()) {
-      const hint = eliminationHint(grid, result, context);
-      if (hint) return hint;
-    }
-  }
-  return null;
+export function nextHintFromPath(path: HintPath | undefined, values: readonly string[], eliminated: readonly number[][] = [], context: HintContext = {}): Hint | null {
+  if (!path || path.engine !== HINT_ENGINE) return null;
+  return path.hints.find((hint) => hint.targets.length > 0 && hint.targets.every(({ cell, digit }) => {
+    if (values[cell] || !candidateList(values, cell, eliminated).includes(digit)) return false;
+    if (!targetMatchesContext({ cell, digit }, hint.kind, context)) return false;
+    const shown = context.visibleCandidates?.[cell] || [];
+    return hint.kind !== "eliminate" || shown.length === 0 || shown.includes(digit);
+  })) || null;
+}
+
+export function findHint(values: readonly string[], eliminated: readonly number[][] = [], context: HintContext = {}): Hint | null {
+  const path = buildHintPath(values, eliminated, context);
+  return nextHintFromPath(path, values, eliminated, context);
 }

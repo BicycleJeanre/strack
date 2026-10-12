@@ -16,7 +16,7 @@ Open **Train** to follow a 20-technique curriculum from singles to expert forcin
 
 The **Curriculum filters** at the bottom are interactive. Choose a family such as **Wings** or **Coloring & chains** to show only those lesson cards; the page returns to the filtered lesson list automatically. Choose the active family again or select **Show all techniques** to restore the complete curriculum.
 
-The six techniques supported by the puzzle hint engine use positions extracted from the documented bundled catalogue. Advanced lessons use original, purpose-built candidate diagrams so the pattern stays legible and every relevant candidate is visible without unrelated puzzle noise. Chain diagrams draw solid strong links and dashed weak links. Both lesson types are bundled and work offline.
+Core lessons use positions extracted from the documented bundled catalogue. Advanced lessons use original, purpose-built candidate diagrams so the pattern stays legible and every relevant candidate is visible without unrelated puzzle noise. Chain diagrams draw solid strong links and dashed weak links. Both lesson types are bundled and work offline.
 
 Every available lesson uses a genuine position derived from the bundled, documented puzzle catalogue and has four stages:
 
@@ -93,7 +93,7 @@ The home screen places unfinished games under **Active puzzles** directly below 
 
 You can **Dismiss hint** without applying it. Each puzzle keeps a private hint notebook; open **Previous hints** to review earlier explanations and reveal their answers again. STrack distinguishes pointing and claiming locked candidates, checks every deduction against the verified solution and current centre candidates, and removes applied eliminations from the displayed notes as well as the solver state.
 
-Release 1 supports naked and hidden singles, locked candidates, naked pairs, naked triples, and row-based X-Wing eliminations. Every bundled Easy, Medium, and Hard puzzle is automatically verified to have a complete path through this local technique set. Diabolical boards are playable and rated, but can require advanced techniques; their cards say that full hints may be unavailable.
+The offline HoDoKu engine covers singles, subsets, intersections, fish, wings, single-digit patterns, coloring, uniqueness, chains and loops, ALS techniques, Sue de Coq, and forcing logic. STrack builds a full ordered path and skips any step you have already completed, so a dismissed or applied hint is not offered again. The path is saved with the puzzle and follows signed-in sessions between devices. Every bundled Easy, Medium, and Hard puzzle and 10 of the 20 Diabolical puzzles are automatically verified to have a complete logical path. The remaining Diabolical cards disclose that their paths can exceed the enabled logical set; STrack still supplies every verified logical step it can find before reporting that limit.
 
 ## Ratings
 

@@ -51,6 +51,7 @@ export interface Game extends BoardSnapshot {
   hintStage: "none" | "preview";
   hintId: string | null;
   hintHistory: HintRecord[];
+  hintPath?: HintPath;
   challenge?: {
     cadence: ChallengeCadence;
     periodKey: string;
@@ -116,6 +117,18 @@ export interface Hint {
   kind: "place" | "eliminate";
   evidence: number[];
   targets: Array<{ cell: number; digit: number }>;
+  links?: Array<{
+    from: { cell: number; digit: number };
+    to: { cell: number; digit: number };
+    strong: boolean;
+  }>;
+}
+
+export interface HintPath {
+  engine: string;
+  generatedAt: number;
+  complete: boolean;
+  hints: Hint[];
 }
 
 export interface HintRecord extends Hint {

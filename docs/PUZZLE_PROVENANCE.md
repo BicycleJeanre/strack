@@ -12,7 +12,7 @@ The source is the [Sudoku Exchange Puzzle Bank](https://github.com/grantm/sudoku
 
 The source repository states that its puzzles were generated with QQWing, every puzzle has a unique solution, and the dataset is dedicated to the public domain under an Unlicense-style dedication.
 
-The STrack app is independently implemented. No source code from the AGPL-3.0 `grantm/sudoku-web-app` application is included.
+The STrack interface and integration are independently implemented. No source code from `grantm/sudoku-web-app` is included. STrack is licensed AGPL-3.0-or-later and vendors the separate GPL-3.0-or-later HoDoKu TypeScript engine at commit `e5b01c91b9dca647a5cf276d69f311a1517c7fcb`; its source, licence, and notices are preserved under `vendor/hodoku-ts/`.
 
 ## Rating disclosure
 
@@ -27,11 +27,11 @@ The friendly bands match the source bank: Easy `< 1.5`, Medium `1.5–2.4`, Hard
 
 ## Selection and validation
 
-`scripts/build-catalogue.mjs` reads the four upstream text files from a local clone selected with `SUDOKU_BANK` (default `/private/tmp/strack-puzzle-bank`), computes a solution independently, and writes the bundled JSON. Hard release puzzles are drawn from the lower part of the source band (`SE ≤ 3.2`) so the local explanatory hint engine can cover them. One SE 3.2 board needing an unsupported technique is explicitly excluded and replaced by the next pinned-bank record.
+`scripts/build-catalogue.mjs` reads the four upstream text files from a local clone selected with `SUDOKU_BANK` (default `/private/tmp/strack-puzzle-bank`), computes a solution independently, and writes the bundled JSON. Hard release puzzles are drawn from the lower part of the source band (`SE ≤ 3.2`). One SE 3.2 board retained from the original release selection is explicitly excluded and replaced by the next pinned-bank record.
 
-`scripts/check-catalogue.mjs` checks metadata, ID uniqueness, digit shape, solution/given agreement, and at least 20 puzzles per band. The unit suite additionally applies local logical hints until every Easy, Medium, and Hard board reaches its stored solution.
+`scripts/check-catalogue.mjs` checks metadata, ID uniqueness, digit shape, solution/given agreement, and at least 20 puzzles per band. The unit suite checks representative full paths, while the release audit runs the HoDoKu path generator over all 80 puzzles. The 2026-10-12 audit verified complete paths for all 60 Easy, Medium, and Hard puzzles and 10 of the 20 Diabolical puzzles.
 
-Diabolical puzzles keep their accurate source rating but use `fullHints: false`; the library and help disclose that their advanced solve paths may exceed the release 1 hint set.
+Each record's `fullHints` value reflects that audit. The ten Diabolical puzzles whose solve paths exceed the enabled logical technique set retain `fullHints: false`; the library and help disclose the limitation. The other ten are marked for complete local hints.
 
 ## Refresh procedure
 
@@ -39,7 +39,7 @@ Diabolical puzzles keep their accurate source rating but use `fullHints: false`;
 2. Update the pinned commit and catalogue version in `scripts/build-catalogue.mjs`.
 3. Run `SUDOKU_BANK=/path/to/bank npm run catalogue:build`.
 4. Run `npm run catalogue:check` and `npm run test:unit`.
-5. Resolve every hint-coverage failure by expanding the independent hint engine or choosing another bank record. Never mislabel unsupported puzzles.
+5. Run the full-catalogue HoDoKu path audit and update `fullHints` from the result. Resolve unexpected regressions before release and never mislabel unsupported puzzles.
 6. Run the complete build and browser suite before review.
 
 Do not use private collections or puzzles whose redistribution terms are unknown.

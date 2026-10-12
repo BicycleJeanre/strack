@@ -942,7 +942,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-00035f2db993",
@@ -972,7 +972,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-0004477c8766",
@@ -987,7 +987,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-0004d942efa5",
@@ -1002,7 +1002,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-00057d44a4af",
@@ -1017,7 +1017,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-000673abbc89",
@@ -1047,7 +1047,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-0006848206bf",
@@ -1137,7 +1137,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-0009f6bd294e",
@@ -1152,7 +1152,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-000a10a08982",
@@ -1167,7 +1167,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-000a17154422",
@@ -1182,7 +1182,7 @@
     "ratingVersion": "Upstream engine build not disclosed; bank snapshot d8c8ebae",
     "difficulty": "Diabolical",
     "catalogueVersion": "2026.10.09+bank.d8c8eba",
-    "fullHints": false
+    "fullHints": true
   },
   {
     "id": "seb-000a8d1be106",

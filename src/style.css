@@ -144,6 +144,8 @@ a { color: var(--accent); }
 .app-header nav button.active, .app-header nav button:hover { border-bottom-color: var(--accent); color: var(--text); }
 main { width: min(1180px, 100%); min-height: calc(100dvh - 64px); margin: 0 auto; padding: 34px 22px calc(80px + env(safe-area-inset-bottom)); }
 main.player-main { width: min(1320px, 100%); }
+.app-footer { display: flex; width: min(1180px, 100%); align-items: center; justify-content: space-between; gap: 12px; margin: -54px auto 0; padding: 16px 22px calc(20px + env(safe-area-inset-bottom)); color: var(--faint); font-size: 10px; }
+.app-footer a { color: var(--muted); font-weight: 700; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
 .eyebrow { color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
 h1 { margin: 7px 0 0; font-size: clamp(25px, 4vw, 39px); line-height: 1.08; letter-spacing: -1.5px; }

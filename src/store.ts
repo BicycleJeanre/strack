@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import type { AnnotationColour, AppData, BoardSnapshot, ColourLine, Game, Preferences, TrainingProgress, TrainingTechniqueId } from "./types.ts";
+import type { AnnotationColour, AppData, BoardSnapshot, ColourLine, Game, HintPath, Preferences, TrainingProgress, TrainingTechniqueId } from "./types.ts";
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
@@ -119,11 +119,20 @@ function normalizeSnapshot(snapshot: BoardSnapshot): BoardSnapshot {
   return snapshot;
 }
 
+function normalizeHintPath(value: unknown): HintPath | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const path = value as HintPath;
+  if (typeof path.engine !== "string" || typeof path.generatedAt !== "number" || typeof path.complete !== "boolean" || !Array.isArray(path.hints)) return undefined;
+  path.hints = path.hints.filter((hint) => hint && typeof hint.id === "string" && (hint.kind === "place" || hint.kind === "eliminate") && Array.isArray(hint.targets) && Array.isArray(hint.evidence));
+  return path;
+}
+
 function normalizeGame(game: Game): Game {
   normalizeSnapshot(game);
   game.history = Array.isArray(game.history) ? game.history.map((item) => normalizeSnapshot(item)) : [];
   game.future = Array.isArray(game.future) ? game.future.map((item) => normalizeSnapshot(item)) : [];
   game.hintHistory = Array.isArray(game.hintHistory) ? game.hintHistory : [];
+  game.hintPath = normalizeHintPath(game.hintPath);
   for (let cell = 0; cell < game.values.length; cell++) if (game.values[cell]) {
     game.corner[cell] = [];
     game.centre[cell] = [];

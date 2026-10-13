@@ -18,6 +18,8 @@ The **Curriculum filters** at the bottom are interactive. Choose a family such a
 
 Every lesson uses a compact position from HoDoKu2's official regression or exemplar library, pinned to a specific upstream commit. STrack rebuilds the candidate state from the original HoDoKu record and asks the local HoDoKu engine for that exact technique before showing the exercise. The source link below each board opens the precise upstream record. Chain diagrams use HoDoKu's structured links: solid for strong links and dashed for weak links. The records and engine are bundled, so training works offline.
 
+In the puzzle grid, double-click or double-tap an empty cell containing exactly one centre note to promote that note to the full digit. The action clears both note types in the cell, cleans the digit from peer notes when candidate cleanup is enabled, and can be undone normally. Cells with no centre notes or more than one centre note are left unchanged.
+
 Every available lesson uses a genuine position derived from the bundled, documented puzzle catalogue and has four stages:
 
 1. **Learn** explains the pattern on a fully marked example. For advanced chains, the link path is drawn directly on the grid.

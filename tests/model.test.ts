@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { applyColour, applyHint as applyGameHint, clearAllColours, clearColour, clearColours, clearLines, clearLinesByColour, createGame, digitIsComplete, enterDigit, fillAllCandidates, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
+import { applyColour, applyHint as applyGameHint, clearAllColours, clearColour, clearColours, clearLines, clearLinesByColour, createGame, digitIsComplete, enterDigit, fillAllCandidates, promoteSoleCentre, redo, selectCell, setMode, toggleLine, undo } from "../src/game.ts";
 import { buildHintPath, findHint, nextHintFromPath } from "../src/hint-engine.ts";
 import { applyHint as applyLogicalHint, candidateList, isHintApplicable, normalizePuzzle, solvePuzzle, validatePuzzle } from "../src/sudoku.ts";
 import type { Puzzle } from "../src/types.ts";
@@ -183,6 +183,23 @@ test("entering a value clears both corner and centre notes", () => {
   assert.equal(game.values[2], "5");
   assert.deepEqual(game.corner[2], []);
   assert.deepEqual(game.centre[2], []);
+});
+
+test("a sole centre note can be promoted to a full digit", () => {
+  const game = createGame(fixture, 1);
+  game.corner[2] = [4, 7];
+  game.centre[2] = [5];
+  game.centre[3] = [5, 6];
+  assert.equal(promoteSoleCentre(game, 2), true);
+  assert.equal(game.values[2], "5");
+  assert.deepEqual(game.corner[2], []);
+  assert.deepEqual(game.centre[2], []);
+  assert.deepEqual(game.centre[3], [6], "candidate cleanup applies to peers");
+  assert.equal(undo(game), true);
+  assert.equal(game.values[2], "");
+  assert.deepEqual(game.centre[2], [5]);
+  game.centre[2] = [4, 5];
+  assert.equal(promoteSoleCentre(game, 2), false, "multiple centre notes are not promoted");
 });
 
 test("cells retain multiple colours and coloured lines participate in undo and redo", () => {

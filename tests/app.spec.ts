@@ -163,6 +163,23 @@ test("normal, corner, centre, colour, multi-select, undo and keyboard flows work
   expect(await page.locator(".sudoku-cell.selected").count()).toBeGreaterThan(1);
 });
 
+test("double-clicking a sole centre note promotes it to the full digit", async ({ page }) => {
+  await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
+  const cell = page.locator(".sudoku-cell:not(.given)").first();
+  await cell.click();
+  await page.getByRole("button", { name: "Centre", exact: true }).click();
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await expect(cell.locator(".centre-marks")).toContainText("2");
+
+  await cell.dblclick();
+  await expect(cell.locator(".cell-value")).toHaveText("2");
+  await expect(cell.locator(".centre-marks")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(cell.locator(".cell-value")).toHaveCount(0);
+  await expect(cell.locator(".centre-marks")).toContainText("2");
+});
+
 test("nine colours subdivide cells and coloured lines can be drawn, recoloured and undone", async ({ page }) => {
   await page.getByRole("button", { name: /Start an Easy puzzle/ }).click();
   const cells = page.locator(".sudoku-cell");

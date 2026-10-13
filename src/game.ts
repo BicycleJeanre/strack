@@ -127,6 +127,26 @@ export function enterDigit(game: Game, digit: number, cleanCandidates = true, mu
   completeIfSolved(game);
 }
 
+export function promoteSoleCentre(game: Game, cell: number, cleanCandidates = true) {
+  if (cell < 0 || cell > 80 || game.puzzle.givens[cell] !== "0" || game.values[cell] || game.centre[cell].length !== 1) return false;
+  const digit = game.centre[cell][0];
+  if (!digit) return false;
+  selectCell(game, cell);
+  startChange(game);
+  game.values[cell] = String(digit);
+  game.corner[cell] = [];
+  game.centre[cell] = [];
+  game.eliminated[cell] = [];
+  if (cleanCandidates) {
+    for (const peer of peers[cell]) {
+      game.corner[peer] = game.corner[peer].filter((value) => value !== digit);
+      game.centre[peer] = game.centre[peer].filter((value) => value !== digit);
+    }
+  }
+  completeIfSolved(game);
+  return true;
+}
+
 export function applyColour(game: Game, colour: AnnotationColour) {
   const remove = game.selected.length > 0 && game.selected.every((cell) => game.colours[cell].includes(colour));
   startChange(game);
